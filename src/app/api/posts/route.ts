@@ -54,13 +54,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    // @ts-expect-error - Prisma client types may not be updated
     const total = await prisma.post.count({ where });
     const totalPages = Math.ceil(total / perPage);
     const skip = (page - 1) * perPage;
 
     // Get posts
-    // @ts-expect-error - Prisma client types may not be updated
     const posts = await prisma.post.findMany({
       where,
       include: {
@@ -160,7 +158,6 @@ export async function POST(request: NextRequest) {
     const postSlug = slug || generateSlug(title);
 
     // Check if slug exists
-    // @ts-expect-error - Prisma client types may not be updated
     const existingSlug = await prisma.post.findUnique({
       where: { slug: postSlug },
     });

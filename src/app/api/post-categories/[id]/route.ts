@@ -82,7 +82,6 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if category has posts
-    // @ts-expect-error - Prisma client types may not be updated
     const postsCount = await prisma.postCategoryRelation.count({
       where: { categoryId: id },
     });
@@ -95,7 +94,6 @@ export async function DELETE(
     }
 
     // Delete category
-    // @ts-expect-error - Prisma client types may not be updated
     await prisma.postCategory.delete({
       where: { id },
     });

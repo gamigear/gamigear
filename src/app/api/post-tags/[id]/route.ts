@@ -9,7 +9,6 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // @ts-expect-error - Prisma client types may not be updated
     const tag = await prisma.postTag.findUnique({
       where: { id },
       include: {
@@ -48,7 +47,6 @@ export async function PUT(
     const body = await request.json();
     const { name, slug, description } = body;
 
-    // @ts-expect-error - Prisma client types may not be updated
     const tag = await prisma.postTag.update({
       where: { id },
       data: {
@@ -77,7 +75,6 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if tag has posts
-    // @ts-expect-error - Prisma client types may not be updated
     const postsCount = await prisma.postTagRelation.count({
       where: { tagId: id },
     });
@@ -89,7 +86,6 @@ export async function DELETE(
       );
     }
 
-    // @ts-expect-error - Prisma client types may not be updated
     await prisma.postTag.delete({
       where: { id },
     });

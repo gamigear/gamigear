@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
       where.name = { contains: search, mode: "insensitive" };
     }
 
-    // @ts-expect-error - Prisma client types may not be updated
     const tags = await prisma.postTag.findMany({
       where,
       include: {
@@ -59,7 +58,6 @@ export async function POST(request: NextRequest) {
     const { generateSlug } = await import('@/lib/slug');
     const finalSlug = slug || generateSlug(name);
 
-    // @ts-expect-error - Prisma client types may not be updated
     const tag = await prisma.postTag.create({
       data: {
         name,
