@@ -12,6 +12,7 @@ export interface CartItem {
   quantity: number;
   sku?: string;
   options?: Record<string, string>; // color, size, etc.
+  variationId?: string; // For variable products
 }
 
 interface CartContextType {

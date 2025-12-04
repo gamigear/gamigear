@@ -962,3 +962,64 @@ model NewsletterSubscriber {
   @@index([status])
   @@index([email])
 }
+
+// ==================== LANDING PAGES ====================
+model LandingPage {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  description     String?
+  template        String   @default("hero-product") // hero-product, countdown-sale, product-showcase, minimal-cta
+  
+  // Hero Section
+  heroTitle       String?
+  heroSubtitle    String?
+  heroImage       String?
+  heroButtonText  String?
+  heroButtonLink  String?
+  heroBackground  String?  // gradient or color
+  
+  // Content Section
+  contentTitle    String?
+  contentText     String?
+  contentImage    String?
+  
+  // Products Section
+  showProducts    Boolean  @default(true)
+  productIds      String?  // JSON array of product IDs
+  productTitle    String?
+  
+  // CTA Section
+  ctaTitle        String?
+  ctaSubtitle     String?
+  ctaButtonText   String?
+  ctaButtonLink   String?
+  ctaBackground   String?
+  
+  // Countdown (for countdown-sale template)
+  countdownEnabled Boolean @default(false)
+  countdownEndDate DateTime?
+  countdownTitle   String?
+  
+  // Custom CSS/Styles
+  customCss       String?
+  primaryColor    String   @default("#3b82f6")
+  secondaryColor  String   @default("#1e40af")
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  
+  // Settings
+  isActive        Boolean  @default(true)
+  viewCount       Int      @default(0)
+  
+  // Dates
+  publishedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([slug])
+  @@index([isActive])
+}

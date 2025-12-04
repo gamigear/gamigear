@@ -110,6 +110,27 @@ const productTexts = {
   },
 };
 
+interface ProductVariation {
+  id: string;
+  sku: string | null;
+  price: number;
+  regularPrice: number | null;
+  salePrice: number | null;
+  onSale: boolean;
+  stockQuantity: number | null;
+  stockStatus: string;
+  image: string | null;
+  attributes: Array<{ name: string; option: string }>;
+}
+
+interface ProductAttribute {
+  id: string;
+  name: string;
+  value: string;
+  visible: boolean;
+  variation: boolean;
+}
+
 interface ProductDetailClientProps {
   product: ProductData & {
     description?: string | null;
@@ -122,6 +143,9 @@ interface ProductDetailClientProps {
     affiliateUrl?: string | null;
     affiliatePlatform?: string | null;
     affiliateButtonText?: string | null;
+    // Variations
+    variations?: ProductVariation[];
+    attributes?: ProductAttribute[];
   };
   relatedProducts: ProductData[];
 }
@@ -138,34 +162,102 @@ export default function ProductDetailClient({
   const [isWished, setIsWished] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [showAddedToast, setShowAddedToast] = useState(false);
+  
+  // Variation state
+  const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
 
-  const discountPercent = product.originalPrice
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
+  // Check if product is variable
+  const isVariable = product.productType === 'variable' && product.variations && product.variations.length > 0;
+  
+  // Get variation attributes (attributes used for variations)
+  const variationAttributes = product.attributes?.filter(attr => attr.variation) || [];
+  
+  // Get available options for each attribute
+  const getAttributeOptions = (attrName: string): string[] => {
+    if (!product.variations) return [];
+    const options = new Set<string>();
+    product.variations.forEach(v => {
+      const attr = v.attributes.find(a => a.name === attrName);
+      if (attr) options.add(attr.option);
+    });
+    return Array.from(options);
+  };
+
+  // Find matching variation based on selected options
+  const findMatchingVariation = (options: Record<string, string>): ProductVariation | null => {
+    if (!product.variations) return null;
+    return product.variations.find(v => {
+      return variationAttributes.every(attr => {
+        const selectedOption = options[attr.name];
+        if (!selectedOption) return false;
+        const varAttr = v.attributes.find(a => a.name === attr.name);
+        return varAttr?.option === selectedOption;
+      });
+    }) || null;
+  };
+
+  // Handle option selection
+  const handleOptionSelect = (attrName: string, option: string) => {
+    const newOptions = { ...selectedOptions, [attrName]: option };
+    setSelectedOptions(newOptions);
+    const variation = findMatchingVariation(newOptions);
+    setSelectedVariation(variation);
+  };
+
+  // Get current price (from variation or product)
+  const currentPrice = selectedVariation?.salePrice || selectedVariation?.price || product.price;
+  const currentOriginalPrice = selectedVariation?.regularPrice || selectedVariation?.price || product.originalPrice;
+  const currentStockStatus = selectedVariation?.stockStatus || product.stockStatus;
+  const currentStockQuantity = selectedVariation?.stockQuantity ?? product.stockQuantity;
+
+  const discountPercent = currentOriginalPrice && currentOriginalPrice > currentPrice
+    ? Math.round((1 - currentPrice / currentOriginalPrice) * 100)
     : 0;
 
   const handleAddToCart = () => {
+    // For variable products, require variation selection
+    if (isVariable && !selectedVariation) {
+      return;
+    }
+    
+    const variationName = selectedVariation 
+      ? ` - ${selectedVariation.attributes.map(a => a.option).join(', ')}`
+      : '';
+    
     addItem({
       productId: product.id,
-      name: product.name,
-      price: product.originalPrice || product.price,
-      salePrice: product.originalPrice ? product.price : undefined,
-      image: product.image,
+      name: product.name + variationName,
+      price: currentOriginalPrice || currentPrice,
+      salePrice: currentOriginalPrice && currentOriginalPrice > currentPrice ? currentPrice : undefined,
+      image: selectedVariation?.image || product.image,
       quantity,
-      sku: product.id,
+      sku: selectedVariation?.sku || product.id,
+      variationId: selectedVariation?.id,
     });
     setShowAddedToast(true);
     setTimeout(() => setShowAddedToast(false), 2000);
   };
 
   const handleBuyNow = () => {
+    // For variable products, require variation selection
+    if (isVariable && !selectedVariation) {
+      return;
+    }
+    
+    const variationName = selectedVariation 
+      ? ` - ${selectedVariation.attributes.map(a => a.option).join(', ')}`
+      : '';
+    
     addItem({
       productId: product.id,
-      name: product.name,
-      price: product.originalPrice || product.price,
-      salePrice: product.originalPrice ? product.price : undefined,
-      image: product.image,
+      name: product.name + variationName,
+      price: currentOriginalPrice || currentPrice,
+      salePrice: currentOriginalPrice && currentOriginalPrice > currentPrice ? currentPrice : undefined,
+      image: selectedVariation?.image || product.image,
       quantity,
-      sku: product.id,
+      sku: selectedVariation?.sku || product.id,
+      variationId: selectedVariation?.id,
     });
     router.push("/cart");
   };
@@ -336,15 +428,15 @@ export default function ProductDetailClient({
             {/* Price - All on one line */}
             <div className="pb-5 pt-6 mo:pt-5">
               <div className="flex items-center flex-wrap gap-x-3 gap-y-1">
-                {product.originalPrice && (
-                  <Price amount={product.originalPrice} className="text-gray-400 line-through text-base" />
+                {currentOriginalPrice && currentOriginalPrice > currentPrice && (
+                  <Price amount={currentOriginalPrice} className="text-gray-400 line-through text-base" />
                 )}
                 {discountPercent > 0 && (
                   <span className="text-primary font-bold text-xl">
                     -{discountPercent}%
                   </span>
                 )}
-                <Price amount={product.price} className="text-2xl font-bold" />
+                <Price amount={currentPrice} className="text-2xl font-bold" />
                 <span className="text-sm font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
                   {t.memberPrice}
                 </span>
@@ -370,15 +462,69 @@ export default function ProductDetailClient({
               </li>
             </ul>
 
+            {/* Variation Selector */}
+            {isVariable && variationAttributes.length > 0 && (
+              <div className="pt-5 space-y-4">
+                {variationAttributes.map(attr => {
+                  const options = getAttributeOptions(attr.name);
+                  return (
+                    <div key={attr.id}>
+                      <p className="text-sm font-medium mb-2">{attr.name}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {options.map(option => (
+                          <button
+                            key={option}
+                            onClick={() => handleOptionSelect(attr.name, option)}
+                            className={`px-4 py-2 border rounded-lg text-sm transition-colors ${
+                              selectedOptions[attr.name] === option
+                                ? "border-primary bg-primary text-white"
+                                : "border-gray-200 hover:border-primary"
+                            }`}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Show selected variation info */}
+                {selectedVariation && (
+                  <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Giá:</span>
+                      <Price amount={currentPrice} className="font-bold" />
+                    </div>
+                    {selectedVariation.sku && (
+                      <div className="flex justify-between mt-1">
+                        <span className="text-gray-600">SKU:</span>
+                        <span>{selectedVariation.sku}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between mt-1">
+                      <span className="text-gray-600">Tình trạng:</span>
+                      <span className={currentStockStatus === 'instock' ? 'text-green-600' : 'text-red-600'}>
+                        {currentStockStatus === 'instock' ? 'Còn hàng' : 'Hết hàng'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {/* Warning if no variation selected */}
+                {!selectedVariation && Object.keys(selectedOptions).length > 0 && (
+                  <p className="text-sm text-orange-500">Vui lòng chọn đầy đủ tùy chọn</p>
+                )}
+              </div>
+            )}
+
             {/* Stock Status */}
-            {product.stockStatus === 'outofstock' && (
+            {currentStockStatus === 'outofstock' && (
               <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
                 {t.outOfStock}
               </div>
             )}
 
             {/* Quantity Selector - Only for normal products */}
-            {!isAffiliate && product.stockStatus !== 'outofstock' && (
+            {!isAffiliate && currentStockStatus !== 'outofstock' && (!isVariable || selectedVariation) && (
               <div className="flex items-center gap-4 pt-6">
                 <span className="text-sm text-gray-600">{t.quantity}:</span>
                 <div className="flex items-center border border-gray-200 rounded-lg">
@@ -393,14 +539,14 @@ export default function ProductDetailClient({
                   <button
                     onClick={() => setQuantity(quantity + 1)}
                     className="p-2 hover:bg-gray-100"
-                    disabled={product.stockQuantity != null && quantity >= product.stockQuantity}
+                    disabled={currentStockQuantity != null && quantity >= currentStockQuantity}
                   >
                     <Plus size={16} />
                   </button>
                 </div>
-                {product.stockQuantity != null && product.stockQuantity <= 10 && (
+                {currentStockQuantity != null && currentStockQuantity <= 10 && (
                   <span className="text-sm text-orange-500">
-                    {t.onlyLeft.replace('{count}', String(product.stockQuantity))}
+                    {t.onlyLeft.replace('{count}', String(currentStockQuantity))}
                   </span>
                 )}
               </div>
@@ -431,16 +577,16 @@ export default function ProductDetailClient({
                   {/* Normal Product */}
                   <button 
                     onClick={handleAddToCart}
-                    className="flex-1 py-3 border border-primary text-primary font-medium rounded-lg hover:bg-primary/5 flex items-center justify-center gap-2 disabled:border-gray-300 disabled:text-gray-300"
-                    disabled={product.stockStatus === 'outofstock'}
+                    className="flex-1 py-3 border border-primary text-primary font-medium rounded-lg hover:bg-primary/5 flex items-center justify-center gap-2 disabled:border-gray-300 disabled:text-gray-300 disabled:cursor-not-allowed"
+                    disabled={currentStockStatus === 'outofstock' || (isVariable && !selectedVariation)}
                   >
                     <ShoppingCart size={18} />
-                    {t.addToCart}
+                    {isVariable && !selectedVariation ? 'Chọn tùy chọn' : t.addToCart}
                   </button>
                   <button 
                     onClick={handleBuyNow}
-                    className="flex-1 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-gray-300"
-                    disabled={product.stockStatus === 'outofstock'}
+                    className="flex-1 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    disabled={currentStockStatus === 'outofstock' || (isVariable && !selectedVariation)}
                   >
                     {t.buyNow}
                   </button>
@@ -535,16 +681,16 @@ export default function ProductDetailClient({
           <>
             <button 
               onClick={handleAddToCart}
-              className="flex-1 py-3 border border-primary text-primary font-medium rounded-lg disabled:border-gray-300 disabled:text-gray-300 flex items-center justify-center gap-1"
-              disabled={product.stockStatus === 'outofstock'}
+              className="flex-1 py-3 border border-primary text-primary font-medium rounded-lg disabled:border-gray-300 disabled:text-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+              disabled={currentStockStatus === 'outofstock' || (isVariable && !selectedVariation)}
             >
               <ShoppingCart size={18} />
-              {t.cart}
+              {isVariable && !selectedVariation ? 'Chọn' : t.cart}
             </button>
             <button 
               onClick={handleBuyNow}
-              className="flex-1 py-3 bg-primary text-white font-medium rounded-lg disabled:bg-gray-300"
-              disabled={product.stockStatus === 'outofstock'}
+              className="flex-1 py-3 bg-primary text-white font-medium rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
+              disabled={currentStockStatus === 'outofstock' || (isVariable && !selectedVariation)}
             >
               {t.buyNow}
             </button>

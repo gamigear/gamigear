@@ -226,6 +226,10 @@ export async function getProductById(id: string) {
       attributes: {
         orderBy: { position: 'asc' },
       },
+      variations: {
+        where: { isActive: true },
+        orderBy: { position: 'asc' },
+      },
       reviews: {
         where: { status: 'approved' },
         orderBy: { createdAt: 'desc' },
@@ -253,6 +257,18 @@ export async function getProductById(id: string) {
       alt: img.alt || '',
     })),
     attributes: product.attributes,
+    variations: product.variations.map((v: any) => ({
+      id: v.id,
+      sku: v.sku,
+      price: v.price,
+      regularPrice: v.regularPrice,
+      salePrice: v.salePrice,
+      onSale: v.onSale,
+      stockQuantity: v.stockQuantity,
+      stockStatus: v.stockStatus,
+      image: v.image,
+      attributes: v.attributes ? JSON.parse(v.attributes) : [],
+    })),
     reviews: product.reviews,
     stockStatus: product.stockStatus,
     stockQuantity: product.stockQuantity,

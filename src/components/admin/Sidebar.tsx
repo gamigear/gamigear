@@ -104,6 +104,12 @@ const getNavigation = (): NavItem[] => [
     permission: "pages.edit",
   },
   {
+    titleKey: "landingPages",
+    icon: <FileText size={20} />,
+    url: "/admin/landing-pages",
+    permission: "pages.edit",
+  },
+  {
     titleKey: "media",
     icon: <Image size={20} />,
     url: "/admin/media",
@@ -239,6 +245,7 @@ export default function AdminSidebar({ open, onClose }: SidebarProps) {
       allFaqs: 'Tất cả câu hỏi',
       faqCategories: 'Danh mục FAQ',
       banners: 'Banners',
+      landingPages: 'Landing Pages',
     };
     return navMap[key] || key;
   };

@@ -13,9 +13,18 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const perPage = parseInt(searchParams.get('per_page') || searchParams.get('limit') || '20');
     const search = searchParams.get('search');
+    const ids = searchParams.get('ids');
 
     // Build where clause
     const where: any = {};
+
+    // Filter by specific IDs
+    if (ids) {
+      const idArray = ids.split(',').filter(Boolean);
+      if (idArray.length > 0) {
+        where.id = { in: idArray };
+      }
+    }
     
     if (status && status !== 'all') {
       where.status = status;
