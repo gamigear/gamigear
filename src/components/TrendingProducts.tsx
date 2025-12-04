@@ -9,6 +9,7 @@ import Price from "@/components/Price";
 interface Product {
   id: string;
   name: string;
+  slug?: string;
   brand?: string;
   price: number;
   originalPrice?: number;
