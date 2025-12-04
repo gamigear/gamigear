@@ -280,6 +280,76 @@ export async function getProductById(id: string) {
   };
 }
 
+// Get single product by Slug
+export async function getProductBySlug(slug: string) {
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    include: {
+      images: {
+        orderBy: { position: 'asc' },
+      },
+      brand: true,
+      categories: {
+        include: { category: true },
+      },
+      tags: {
+        include: { tag: true },
+      },
+      attributes: {
+        orderBy: { position: 'asc' },
+      },
+      variations: {
+        where: { isActive: true },
+        orderBy: { position: 'asc' },
+      },
+      reviews: {
+        where: { status: 'approved' },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: {
+          customer: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!product) return null;
+
+  return {
+    ...transformProduct(product),
+    description: product.description,
+    shortDescription: product.shortDescription,
+    images: product.images.map((img: { src: string; alt: string | null }) => ({
+      src: img.src,
+      alt: img.alt || '',
+    })),
+    attributes: product.attributes,
+    variations: product.variations.map((v: any) => ({
+      id: v.id,
+      sku: v.sku,
+      price: v.price,
+      regularPrice: v.regularPrice,
+      salePrice: v.salePrice,
+      onSale: v.onSale,
+      stockQuantity: v.stockQuantity,
+      stockStatus: v.stockStatus,
+      image: v.image,
+      attributes: v.attributes ? JSON.parse(v.attributes) : [],
+    })),
+    reviews: product.reviews,
+    stockStatus: product.stockStatus,
+    stockQuantity: product.stockQuantity,
+    productType: product.productType,
+    affiliateUrl: product.affiliateUrl,
+    affiliateButtonText: product.affiliateButtonText,
+  };
+}
+
 // Get categories
 export async function getCategories(): Promise<CategoryData[]> {
   const categories = await prisma.category.findMany({

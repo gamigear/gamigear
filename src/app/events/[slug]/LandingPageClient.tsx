@@ -106,7 +106,7 @@ function ProductCard({ product, primaryColor }: { product: Product; primaryColor
 
   return (
     <Link
-      href={`/product/${product.slug}`}
+      href={`/goods/detail/${product.id}`}
       className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
     >
       <div className="relative aspect-square overflow-hidden">
@@ -366,7 +366,7 @@ function ProductShowcaseTemplate({ landingPage, products }: Props) {
               {products.map((product) => (
                 <Link
                   key={product.id}
-                  href={`/product/${product.slug}`}
+                  href={`/goods/detail/${product.id}`}
                   className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden"
                 >
                   <div className="aspect-[4/3] overflow-hidden">

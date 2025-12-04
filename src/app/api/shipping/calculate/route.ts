@@ -19,11 +19,11 @@ export async function POST(request: NextRequest) {
       include: {
         locations: true,
         methods: {
-          where: { enabled: true },
-          orderBy: { order: 'asc' },
+          where: { isActive: true },
+          orderBy: { position: 'asc' },
         },
       },
-      orderBy: { order: 'asc' },
+      orderBy: { priority: 'asc' },
     });
 
     let matchedZone = null;
