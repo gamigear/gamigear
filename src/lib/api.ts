@@ -11,6 +11,7 @@ export interface ProductData {
   brand?: string | null;
   category?: string;
   categoryId?: string;
+  categorySlug?: string;
   rating?: number;
   reviewCount?: number;
   isBest?: boolean;
@@ -40,6 +41,7 @@ function transformProduct(product: any, rank?: number): ProductData {
     brand: product.brand?.name || null,
     category: product.categories?.[0]?.category?.name || '',
     categoryId: product.categories?.[0]?.category?.id || '',
+    categorySlug: product.categories?.[0]?.category?.slug || '',
     rating: product.averageRating || 0,
     reviewCount: product.ratingCount || 0,
     isBest: product.featured,

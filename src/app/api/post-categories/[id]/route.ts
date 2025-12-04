@@ -9,7 +9,6 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // @ts-expect-error - Prisma client types may not be updated
     const category = await prisma.postCategory.findUnique({
       where: { id },
       include: {

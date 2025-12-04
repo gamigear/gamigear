@@ -291,11 +291,11 @@ export default function ProductDetailClient({
 
   // Breadcrumb items
   const breadcrumbItems = [
-    ...(product.category
+    ...(product.category && product.categorySlug
       ? [
           {
             label: product.category,
-            href: `/category/${product.categoryId}`,
+            href: `/category/${product.categorySlug}`,
             hasDropdown: true,
           },
         ]
