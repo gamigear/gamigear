@@ -61,14 +61,14 @@ export async function GET(request: NextRequest) {
       orderNumber: order.orderNumber,
       status: order.status,
       paymentMethod: order.paymentMethod,
-      paymentStatus: order.paymentStatus,
+      paymentStatus: order.datePaid ? 'paid' : 'pending',
       total: order.total,
       itemCount: order.items.length,
       customer: {
         id: order.customer?.id || '',
-        name: order.customer?.name || order.billingName || 'Guest',
+        name: `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() || order.billingFirstName || 'Guest',
         email: order.customer?.email || order.billingEmail || '',
-        phone: order.customer?.phone || order.billingPhone || '',
+        phone: order.billingPhone || '',
       },
       createdAt: order.createdAt.toISOString(),
     }));
