@@ -52,7 +52,6 @@ export async function PUT(
     const body = await request.json();
     const { name, slug, description, image, parentId } = body;
 
-    // @ts-expect-error - Prisma client types may not be updated
     const category = await prisma.postCategory.update({
       where: { id },
       data: {

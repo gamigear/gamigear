@@ -92,6 +92,11 @@ function CountdownTimer({ endDate, title }: { endDate: string; title?: string })
   );
 }
 
+// Format price consistently
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat('vi-VN').format(price);
+}
+
 // Product Card Component
 function ProductCard({ product, primaryColor }: { product: Product; primaryColor: string }) {
   const image = product.images?.[0]?.src || "/placeholder.png";
@@ -123,11 +128,11 @@ function ProductCard({ product, primaryColor }: { product: Product; primaryColor
         </h3>
         <div className="flex items-center gap-2">
           <span className="text-lg font-bold" style={{ color: primaryColor }}>
-            {(product.salePrice || product.price).toLocaleString()}đ
+            {formatPrice(product.salePrice || product.price)}đ
           </span>
           {product.regularPrice && product.onSale && (
             <span className="text-sm text-gray-400 line-through">
-              {product.regularPrice.toLocaleString()}đ
+              {formatPrice(product.regularPrice)}đ
             </span>
           )}
         </div>

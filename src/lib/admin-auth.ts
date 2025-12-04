@@ -6,6 +6,11 @@ export const ADMIN_ROLES = {
     description: "Full access to all features",
     permissions: ["*"], // All permissions
   },
+  admin: {
+    name: "Admin",
+    description: "Full access to all features",
+    permissions: ["*"], // All permissions
+  },
   shop_manager: {
     name: "Shop Manager",
     description: "Manage products, orders, and customers",
@@ -62,7 +67,7 @@ export function hasAllPermissions(role: string, permissions: string[]): boolean 
 
 // Check if user is an admin (has any admin role)
 export function isAdminRole(role: string): boolean {
-  return ["administrator", "shop_manager", "editor"].includes(role);
+  return ["administrator", "admin", "shop_manager", "editor"].includes(role);
 }
 
 // Get all permissions for a role
