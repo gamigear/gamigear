@@ -108,8 +108,9 @@ export async function POST() {
     });
   } catch (error) {
     console.error("Error syncing R2 files:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to sync R2 files" },
+      { error: "Failed to sync R2 files", details: errorMessage },
       { status: 500 }
     );
   }
