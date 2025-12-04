@@ -49,10 +49,10 @@ export function hasPermission(role: string, permission: string): boolean {
   if (!roleConfig) return false;
   
   // Administrator has all permissions
-  if (roleConfig.permissions.includes("*")) return true;
+  if ((roleConfig.permissions as readonly string[]).includes("*")) return true;
   
   // Check specific permission
-  return roleConfig.permissions.includes(permission);
+  return (roleConfig.permissions as readonly string[]).includes(permission);
 }
 
 // Check if user has any of the specified permissions
