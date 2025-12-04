@@ -18,7 +18,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <div className="product-card group">
-      <Link href={`/goods/detail/${product.id}`} className="block">
+      <Link href={`/goods/detail/${product.slug || product.id}`} className="block" prefetch={true}>
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-lg mb-3">
           {product.image && product.image !== "#" && (product.image.startsWith("/") || product.image.startsWith("http")) ? (
@@ -26,6 +26,8 @@ export default function ProductCard({ product }: ProductCardProps) {
               src={product.image}
               alt={product.name}
               fill
+              sizes="(max-width: 768px) 50vw, 25vw"
+              loading="lazy"
               className="product-image object-cover transition-transform duration-300"
             />
           ) : (

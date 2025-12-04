@@ -92,7 +92,7 @@ export default function BestProductSlider({ products, title }: BestProductSlider
           >
             {products.map((product, index) => (
               <SwiperSlide key={product.id} className="!h-auto">
-                <Link href={`/goods/detail/${product.id}`} className="block cursor-pointer">
+                <Link href={`/goods/detail/${product.slug || product.id}`} className="block cursor-pointer" prefetch={true}>
                   <div className="relative w-full">
                     {/* Rank Badge */}
                     <div className="absolute left-1 top-1 pc:left-2 pc:top-2 z-10 flex size-7 pc:size-9 items-center justify-center rounded-md pc:rounded-xl bg-primary font-bold text-white">
@@ -106,6 +106,8 @@ export default function BestProductSlider({ products, title }: BestProductSlider
                           src={product.image}
                           alt={product.name}
                           fill
+                          sizes="(max-width: 768px) 50vw, 20vw"
+                          loading={index < 4 ? "eager" : "lazy"}
                           className="object-contain"
                         />
                       ) : (

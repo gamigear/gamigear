@@ -280,9 +280,10 @@ export async function getProductById(id: string) {
   };
 }
 
-// Get single product by Slug
+// Get single product by Slug (with fallback to ID)
 export async function getProductBySlug(slug: string) {
-  const product = await prisma.product.findUnique({
+  // Try to find by slug first
+  let product = await prisma.product.findUnique({
     where: { slug },
     include: {
       images: {
@@ -317,6 +318,45 @@ export async function getProductBySlug(slug: string) {
       },
     },
   });
+
+  // If not found by slug, try to find by ID (for backward compatibility)
+  if (!product) {
+    product = await prisma.product.findUnique({
+      where: { id: slug },
+      include: {
+        images: {
+          orderBy: { position: 'asc' },
+        },
+        brand: true,
+        categories: {
+          include: { category: true },
+        },
+        tags: {
+          include: { tag: true },
+        },
+        attributes: {
+          orderBy: { position: 'asc' },
+        },
+        variations: {
+          where: { isActive: true },
+          orderBy: { position: 'asc' },
+        },
+        reviews: {
+          where: { status: 'approved' },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: {
+            customer: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
 
   if (!product) return null;
 

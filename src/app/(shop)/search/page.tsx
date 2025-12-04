@@ -205,7 +205,7 @@ export default function SearchPage() {
                   {results.data.map((product) => (
                     <Link
                       key={product.id}
-                      href={`/goods/detail/${product.id}`}
+                      href={`/goods/detail/${product.slug || product.id}`}
                       className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow group"
                     >
                       <div className="aspect-square relative bg-gray-100">

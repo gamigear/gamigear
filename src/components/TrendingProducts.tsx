@@ -184,7 +184,7 @@ export default function TrendingProducts({ title, limit = 16, settings }: Trendi
           <ul className="grid grid-cols-2 pc:grid-cols-4 gap-4 pc:gap-7">
             {products.slice(0, visibleCount).map((product) => (
               <li key={product.id}>
-                <Link href={`/goods/detail/${product.id}`} className="block group">
+                <Link href={`/goods/detail/${product.slug || product.id}`} className="block group" prefetch={true}>
                   {/* Image */}
                   <div className="relative aspect-square mb-2 pc:mb-4 rounded-lg pc:rounded-xl overflow-hidden bg-gray-100">
                     {product.image ? (

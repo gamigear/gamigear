@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import { getProductBySlug } from "@/lib/api";
 import ProductDetailClient from "./ProductDetailClient";
 import prisma from "@/lib/db/prisma";
@@ -8,6 +9,9 @@ const db = prisma as any;
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
+
+// Generate static params for popular products (optional - for static generation)
+export const revalidate = 60; // Revalidate page every 60 seconds
 
 async function getRelatedProducts(productId: string) {
   try {
@@ -104,16 +108,30 @@ async function getRelatedProducts(productId: string) {
   }
 }
 
+// Cache product data
+const getCachedProduct = unstable_cache(
+  async (slug: string) => getProductBySlug(slug),
+  ['product'],
+  { revalidate: 60, tags: ['product'] }
+);
+
+// Cache related products
+const getCachedRelatedProducts = unstable_cache(
+  async (productId: string) => getRelatedProducts(productId),
+  ['related-products'],
+  { revalidate: 120, tags: ['related-products'] }
+);
+
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params;
   
-  const product = await getProductBySlug(slug);
+  const product = await getCachedProduct(slug);
   
   if (!product) {
     notFound();
   }
 
-  const relatedProducts = await getRelatedProducts(product.id);
+  const relatedProducts = await getCachedRelatedProducts(product.id);
 
   return (
     <ProductDetailClient 

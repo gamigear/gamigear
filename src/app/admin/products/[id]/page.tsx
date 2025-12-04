@@ -121,7 +121,7 @@ export default function ProductDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href={`/goods/detail/${productId}`}
+            href={`/goods/detail/${product?.slug || productId}`}
             target="_blank"
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50"
           >

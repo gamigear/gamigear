@@ -271,7 +271,7 @@ export default function ProductsDashboard() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1">
                         <Link 
-                          href={`/goods/detail/${product.id}`} 
+                          href={`/goods/detail/${product.slug}`} 
                           target="_blank" 
                           className="p-2 hover:bg-gray-100 rounded-lg" 
                           title="View"
