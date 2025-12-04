@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
       return {
         id: method.id,
-        title: method.title,
+        title: method.name,
         type: method.type,
         cost,
         available,
