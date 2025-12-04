@@ -78,7 +78,7 @@ export default function CheckoutPage() {
   // Pre-fill user info if logged in
   useEffect(() => {
     if (user) {
-      const userData = user as Record<string, unknown>;
+      const userData = user as unknown as Record<string, unknown>;
       setShippingAddress((prev) => ({
         ...prev,
         firstName: (userData.firstName as string) || "",
