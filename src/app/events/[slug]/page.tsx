@@ -70,5 +70,28 @@ export default async function EventPage({ params }: Props) {
     }
   }
 
-  return <LandingPageClient landingPage={landingPage} products={products} />;
+  // Transform null to undefined for optional fields
+  const transformedLandingPage = {
+    ...landingPage,
+    heroTitle: landingPage.heroTitle ?? undefined,
+    heroSubtitle: landingPage.heroSubtitle ?? undefined,
+    heroImage: landingPage.heroImage ?? undefined,
+    heroButtonText: landingPage.heroButtonText ?? undefined,
+    heroButtonLink: landingPage.heroButtonLink ?? undefined,
+    heroBackground: landingPage.heroBackground ?? undefined,
+    contentTitle: landingPage.contentTitle ?? undefined,
+    contentText: landingPage.contentText ?? undefined,
+    contentImage: landingPage.contentImage ?? undefined,
+    productTitle: landingPage.productTitle ?? undefined,
+    ctaTitle: landingPage.ctaTitle ?? undefined,
+    ctaSubtitle: landingPage.ctaSubtitle ?? undefined,
+    ctaButtonText: landingPage.ctaButtonText ?? undefined,
+    ctaButtonLink: landingPage.ctaButtonLink ?? undefined,
+    ctaBackground: landingPage.ctaBackground ?? undefined,
+    countdownEndDate: landingPage.countdownEndDate?.toISOString() ?? undefined,
+    countdownTitle: landingPage.countdownTitle ?? undefined,
+    customCss: landingPage.customCss ?? undefined,
+  };
+
+  return <LandingPageClient landingPage={transformedLandingPage} products={products} />;
 }
