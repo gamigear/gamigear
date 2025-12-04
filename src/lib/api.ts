@@ -248,11 +248,17 @@ export async function getProductById(id: string) {
     ...transformProduct(product),
     description: product.description,
     shortDescription: product.shortDescription,
-    images: product.images,
+    images: product.images.map((img: { src: string; alt: string | null }) => ({
+      src: img.src,
+      alt: img.alt || '',
+    })),
     attributes: product.attributes,
     reviews: product.reviews,
     stockStatus: product.stockStatus,
     stockQuantity: product.stockQuantity,
+    productType: product.productType,
+    affiliateUrl: product.affiliateUrl,
+    affiliateButtonText: product.affiliateButtonText,
   };
 }
 
