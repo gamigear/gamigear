@@ -75,7 +75,7 @@ export function getRolePermissions(role: string): string[] {
   const roleConfig = ADMIN_ROLES[role as AdminRole];
   if (!roleConfig) return [];
   
-  if (roleConfig.permissions.includes("*")) {
+  if ((roleConfig.permissions as readonly string[]).includes("*")) {
     // Return all possible permissions for administrator
     return [
       "products.view", "products.create", "products.edit", "products.delete",
