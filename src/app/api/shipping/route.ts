@@ -9,31 +9,35 @@ export async function GET() {
       include: {
         locations: true,
         methods: {
-          orderBy: { order: 'asc' },
+          orderBy: { position: 'asc' },
         },
       },
-      orderBy: { order: 'asc' },
+      orderBy: { priority: 'asc' },
     });
 
     // Transform data
     const transformedZones = zones.map((zone) => ({
       id: zone.id,
       name: zone.name,
-      order: zone.order,
+      slug: zone.slug,
+      type: zone.type,
+      priority: zone.priority,
+      isActive: zone.isActive,
       locations: zone.locations.map((loc) => ({
         id: loc.id,
         code: loc.code,
         type: loc.type,
+        name: loc.name,
       })),
       methods: zone.methods.map((method) => ({
         id: method.id,
-        title: method.title,
+        name: method.name,
         type: method.type,
-        enabled: method.enabled,
-        order: method.order,
+        isActive: method.isActive,
+        position: method.position,
         cost: method.cost,
         minAmount: method.minAmount,
-        settings: method.settings ? JSON.parse(method.settings) : null,
+        estimatedDays: method.estimatedDays,
       })),
       createdAt: zone.createdAt.toISOString(),
       updatedAt: zone.updatedAt.toISOString(),
@@ -55,7 +59,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, locations = [], methods = [] } = body;
+    const { name, slug, type = 'global', locations = [], methods = [] } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -64,9 +68,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get max order
-    const maxOrder = await prisma.shippingZone.aggregate({
-      _max: { order: true },
+    // Get max priority
+    const maxPriority = await prisma.shippingZone.aggregate({
+      _max: { priority: true },
     });
 
     // Create zone with transaction
@@ -75,17 +79,20 @@ export async function POST(request: NextRequest) {
       const newZone = await tx.shippingZone.create({
         data: {
           name,
-          order: (maxOrder._max.order || 0) + 1,
+          slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
+          type,
+          priority: (maxPriority._max.priority || 0) + 1,
         },
       });
 
       // Add locations
       if (locations.length > 0) {
         await tx.shippingLocation.createMany({
-          data: locations.map((loc: any) => ({
+          data: locations.map((loc: { code: string; type?: string; name: string }) => ({
             zoneId: newZone.id,
             code: loc.code,
             type: loc.type || 'country',
+            name: loc.name,
           })),
         });
       }
@@ -93,15 +100,15 @@ export async function POST(request: NextRequest) {
       // Add methods
       if (methods.length > 0) {
         await tx.shippingMethod.createMany({
-          data: methods.map((method: any, index: number) => ({
+          data: methods.map((method: { name: string; type?: string; isActive?: boolean; cost?: number; minAmount?: number; estimatedDays?: string }, index: number) => ({
             zoneId: newZone.id,
-            title: method.title,
+            name: method.name,
             type: method.type || 'flat_rate',
-            enabled: method.enabled ?? true,
-            order: index + 1,
-            cost: method.cost,
+            isActive: method.isActive ?? true,
+            position: index,
+            cost: method.cost || 0,
             minAmount: method.minAmount,
-            settings: method.settings ? JSON.stringify(method.settings) : null,
+            estimatedDays: method.estimatedDays,
           })),
         });
       }
