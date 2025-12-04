@@ -147,14 +147,14 @@ export async function POST(request: NextRequest) {
       const coupon = await prisma.coupon.findUnique({
         where: { code: couponCode },
       });
-      if (coupon && coupon.isActive) {
-        if (coupon.discountType === 'percentage') {
-          discount = (subtotal * coupon.discountValue) / 100;
-          if (coupon.maxDiscount && discount > coupon.maxDiscount) {
-            discount = coupon.maxDiscount;
+      if (coupon && (!coupon.dateExpires || coupon.dateExpires > new Date())) {
+        if (coupon.discountType === 'percent') {
+          discount = (subtotal * coupon.amount) / 100;
+          if (coupon.maximumAmount && discount > coupon.maximumAmount) {
+            discount = coupon.maximumAmount;
           }
         } else {
-          discount = coupon.discountValue;
+          discount = coupon.amount;
         }
       }
     }
@@ -164,33 +164,44 @@ export async function POST(request: NextRequest) {
     // Generate order number
     const orderNumber = `ORD${Date.now()}`;
 
-    // Create order
+    // Create order with schema-compatible fields
     const order = await prisma.order.create({
       data: {
         orderNumber,
         customerId,
         status: 'pending',
-        paymentMethod,
-        paymentStatus: 'pending',
+        currency: 'KRW',
         subtotal,
-        shippingCost,
-        discount,
+        discountTotal: discount,
+        shippingTotal: shippingCost,
         total,
-        shippingName,
-        shippingPhone,
-        shippingAddress,
-        shippingCity,
-        shippingPostalCode,
-        billingName,
-        billingPhone,
-        billingAddress,
-        billingCity,
-        billingPostalCode,
-        billingEmail,
-        notes,
-        couponCode,
+        paymentMethod: paymentMethod || 'cod',
+        paymentMethodTitle: paymentMethod === 'card' ? 'Credit Card' : 'Cash on Delivery',
+        // Billing
+        billingFirstName: billingName?.split(' ')[0] || '',
+        billingLastName: billingName?.split(' ').slice(1).join(' ') || '',
+        billingAddress1: billingAddress || '',
+        billingCity: billingCity || '',
+        billingState: '',
+        billingPostcode: billingPostalCode || '',
+        billingCountry: 'KR',
+        billingEmail: billingEmail || '',
+        billingPhone: billingPhone || '',
+        // Shipping
+        shippingFirstName: shippingName?.split(' ')[0] || '',
+        shippingLastName: shippingName?.split(' ').slice(1).join(' ') || '',
+        shippingAddress1: shippingAddress || '',
+        shippingCity: shippingCity || '',
+        shippingState: '',
+        shippingPostcode: shippingPostalCode || '',
+        shippingCountry: 'KR',
+        customerNote: notes || '',
         items: {
-          create: orderItems,
+          create: orderItems.map(item => ({
+            ...item,
+            name: '',
+            subtotal: item.total,
+          })),
         },
       },
       include: {

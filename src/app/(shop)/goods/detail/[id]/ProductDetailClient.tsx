@@ -337,7 +337,7 @@ export default function ProductDetailClient({
 
           {/* Product Info - 50% width */}
           <div className="goods-info mo:px-0 pc:w-1/2 p-4 pc:p-0">
-            {/* Brand & Actions */}
+            {/* Brand */}
             <div className="mb-2 flex mo:mb-[14px]">
               {product.brand && (
                 <Link
@@ -348,21 +348,6 @@ export default function ProductDetailClient({
                   <ChevronRight size={12} />
                 </Link>
               )}
-              <div className="ml-auto hidden pc:flex items-center justify-center gap-3">
-                <button
-                  onClick={() => setIsWished(!isWished)}
-                  title={t.wishlist}
-                  className="p-1"
-                >
-                  <Heart
-                    size={24}
-                    className={isWished ? "fill-primary text-primary" : "text-gray-400"}
-                  />
-                </button>
-                <button title={t.share} className="p-1">
-                  <Share2 size={24} className="text-gray-400" />
-                </button>
-              </div>
             </div>
 
             {/* Title */}
@@ -589,6 +574,23 @@ export default function ProductDetailClient({
                     disabled={currentStockStatus === 'outofstock' || (isVariable && !selectedVariation)}
                   >
                     {t.buyNow}
+                  </button>
+                  {/* Wishlist & Share buttons */}
+                  <button
+                    onClick={() => setIsWished(!isWished)}
+                    title={t.wishlist}
+                    className="p-3 border border-gray-200 rounded-lg hover:border-primary transition-colors"
+                  >
+                    <Heart
+                      size={20}
+                      className={isWished ? "fill-primary text-primary" : "text-gray-400"}
+                    />
+                  </button>
+                  <button 
+                    title={t.share} 
+                    className="p-3 border border-gray-200 rounded-lg hover:border-primary transition-colors"
+                  >
+                    <Share2 size={20} className="text-gray-400" />
                   </button>
                 </>
               )}
