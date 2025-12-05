@@ -56,7 +56,7 @@ const emojiOptions = ["🥇", "🔥", "✨", "💰", "⭐", "💎", "🎁", "�
 
 export default function TrendingTabsSettingsPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAdminAuth();
+  const { isAuthenticated, loading: authLoading } = useAdminAuth();
   const [config, setConfig] = useState<TrendingTabsConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
