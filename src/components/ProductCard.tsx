@@ -94,7 +94,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
           
           {hasValidOriginalPrice && (
-            <Price amount={product.originalPrice} className="text-sm text-gray-400 line-through" />
+            <Price amount={originalPrice} className="text-sm text-gray-400 line-through" />
           )}
 
           {/* Rating */}
