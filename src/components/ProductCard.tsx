@@ -13,9 +13,10 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   // Only show discount if originalPrice exists and is greater than 0
-  const hasValidOriginalPrice = product.originalPrice && product.originalPrice > 0 && product.originalPrice > product.price;
+  const originalPrice = product.originalPrice ?? 0;
+  const hasValidOriginalPrice = originalPrice > 0 && originalPrice > product.price;
   const discountPercent = hasValidOriginalPrice
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
+    ? Math.round((1 - product.price / originalPrice) * 100)
     : 0;
 
   return (
