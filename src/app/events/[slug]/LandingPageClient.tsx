@@ -51,10 +51,13 @@ interface Props {
 
 // Countdown Timer Component
 function CountdownTimer({ endDate, title }: { endDate: string; title?: string }) {
+  const [mounted, setMounted] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    setMounted(true);
+    
+    const calculateTimeLeft = () => {
       const now = new Date().getTime();
       const end = new Date(endDate).getTime();
       const diff = end - now;
@@ -67,10 +70,30 @@ function CountdownTimer({ endDate, title }: { endDate: string; title?: string })
           seconds: Math.floor((diff % (1000 * 60)) / 1000),
         });
       }
-    }, 1000);
+    };
+    
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
 
     return () => clearInterval(timer);
   }, [endDate]);
+
+  // Show placeholder during SSR to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="text-center">
+        {title && <p className="text-lg mb-4 opacity-90">{title}</p>}
+        <div className="flex justify-center gap-4">
+          {["Ngày", "Giờ", "Phút", "Giây"].map((label, i) => (
+            <div key={i} className="bg-white/20 backdrop-blur-sm rounded-lg p-4 min-w-[80px]">
+              <div className="text-3xl md:text-4xl font-bold">00</div>
+              <div className="text-sm opacity-80">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="text-center">
@@ -92,9 +115,9 @@ function CountdownTimer({ endDate, title }: { endDate: string; title?: string })
   );
 }
 
-// Format price consistently
+// Format price consistently - use simple formatting to avoid hydration mismatch
 function formatPrice(price: number): string {
-  return new Intl.NumberFormat('vi-VN').format(price);
+  return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 // Product Card Component
@@ -382,7 +405,7 @@ function ProductShowcaseTemplate({ landingPage, products }: Props) {
                     </h3>
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-bold" style={{ color: primaryColor }}>
-                        {(product.salePrice || product.price).toLocaleString()}đ
+                        {formatPrice(product.salePrice || product.price)}đ
                       </span>
                       <span
                         className="px-4 py-2 rounded-full text-sm font-medium text-white transition-colors"

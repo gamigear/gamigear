@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
+import { verifyAuth, unauthorizedResponse } from '@/lib/api-auth';
+import { validateFileUpload, checkRateLimit, getClientIP, rateLimitResponse } from '@/lib/security';
 
-// POST /api/upload - Upload file
+// POST /api/upload - Upload file (requires authentication)
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit(`upload:${clientIP}`, { windowMs: 60000, maxRequests: 20 });
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.resetTime);
+    }
+
+    // Authentication check
+    const authResult = await verifyAuth(request);
+    if (!authResult.success) {
+      return unauthorizedResponse(authResult.error);
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
     
@@ -12,22 +28,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.' }, { status: 400 });
+    // Enhanced file validation
+    const validation = validateFileUpload(file, {
+      maxSize: 5 * 1024 * 1024,
+      allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+      allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+    });
+
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      return NextResponse.json({ error: 'File too large. Maximum size is 5MB.' }, { status: 400 });
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now();
-    const ext = path.extname(file.name);
-    const filename = `${timestamp}${ext}`;
+    // Generate secure random filename to prevent path traversal
+    const randomName = crypto.randomBytes(16).toString('hex');
+    const ext = path.extname(file.name).toLowerCase();
+    const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext) ? ext : '.jpg';
+    const filename = `${Date.now()}-${randomName}${safeExt}`;
     
     // Create uploads directory if it doesn't exist
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');

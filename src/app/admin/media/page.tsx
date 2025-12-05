@@ -32,7 +32,10 @@ export default function MediaLibraryPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [convertToWebp, setConvertToWebp] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [storageConfig, setStorageConfig] = useState<StorageConfig | null>(null);
@@ -178,12 +181,104 @@ export default function MediaLibraryPage() {
       if (response.ok) {
         setMedia(media.filter(m => m.id !== id));
         if (selectedMedia?.id === id) setSelectedMedia(null);
+        selectedIds.delete(id);
+        setSelectedIds(new Set(selectedIds));
       } else {
         alert("Xóa thất bại");
       }
     } catch (error) {
       console.error("Delete error:", error);
       alert("Xóa thất bại");
+    }
+  };
+
+  // Toggle selection mode
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (isSelectionMode) {
+      setSelectedIds(new Set());
+    }
+  };
+
+  // Toggle single item selection
+  const toggleItemSelection = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  // Select all visible items
+  const selectAll = () => {
+    const allIds = new Set(filteredMedia.map(m => m.id));
+    setSelectedIds(allIds);
+  };
+
+  // Deselect all
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    
+    if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.size} tệp đã chọn?`)) return;
+    
+    setDeleting(true);
+    let successCount = 0;
+    let failCount = 0;
+    
+    try {
+      const deletePromises = Array.from(selectedIds).map(async (id) => {
+        try {
+          const response = await fetch(`/api/media/${id}`, {
+            method: "DELETE",
+          });
+          if (response.ok) {
+            successCount++;
+            return id;
+          } else {
+            failCount++;
+            return null;
+          }
+        } catch {
+          failCount++;
+          return null;
+        }
+      });
+      
+      const results = await Promise.all(deletePromises);
+      const deletedIds = results.filter(Boolean) as string[];
+      
+      // Update media list
+      setMedia(media.filter(m => !deletedIds.includes(m.id)));
+      
+      // Clear selection
+      setSelectedIds(new Set());
+      if (selectedMedia && deletedIds.includes(selectedMedia.id)) {
+        setSelectedMedia(null);
+      }
+      
+      // Show result
+      if (failCount > 0) {
+        alert(`Đã xóa ${successCount} tệp. ${failCount} tệp xóa thất bại.`);
+      } else {
+        alert(`Đã xóa ${successCount} tệp thành công.`);
+      }
+      
+      // Exit selection mode if all deleted
+      if (successCount > 0 && selectedIds.size === successCount) {
+        setIsSelectionMode(false);
+      }
+    } catch (error) {
+      console.error("Bulk delete error:", error);
+      alert("Xóa hàng loạt thất bại");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -206,26 +301,37 @@ export default function MediaLibraryPage() {
     
     try {
       // First check how many new files
-      const checkResponse = await fetch("/api/storage/sync");
+      const checkResponse = await fetch("/api/media/sync-r2");
       const checkData = await checkResponse.json();
       
-      if (checkData.new === 0) {
+      if (!checkData.configured) {
+        alert("R2 chưa được cấu hình");
+        return;
+      }
+      
+      if (checkData.error) {
+        alert("Lỗi: " + checkData.error);
+        return;
+      }
+      
+      if (!checkData.needsSync) {
         setSyncResult({ new: 0 });
         alert("Không có file mới để sync từ R2");
         return;
       }
       
-      if (!confirm(`Tìm thấy ${checkData.new} file mới trong R2. Bạn có muốn import vào Media Library?`)) {
+      const newCount = checkData.r2Files - checkData.dbRecords;
+      if (!confirm(`Tìm thấy ${newCount} file mới trong R2. Bạn có muốn import vào Media Library?`)) {
         return;
       }
       
       // Import files
-      const syncResponse = await fetch("/api/storage/sync", { method: "POST" });
+      const syncResponse = await fetch("/api/media/sync-r2", { method: "POST" });
       const syncData = await syncResponse.json();
       
       if (syncData.success) {
-        setSyncResult({ new: checkData.new, imported: syncData.imported });
-        alert(`Đã import ${syncData.imported} file từ R2`);
+        setSyncResult({ new: newCount, imported: syncData.synced });
+        alert(`Đã import ${syncData.synced} file từ R2`);
         fetchMedia(); // Refresh media list
       } else {
         alert("Sync thất bại: " + (syncData.error || "Unknown error"));
@@ -242,7 +348,14 @@ export default function MediaLibraryPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold">{t.media.title}</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">{t.media.title}</h1>
+          {isSelectionMode && selectedIds.size > 0 && (
+            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+              Đã chọn {selectedIds.size} tệp
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-4 flex-wrap">
           {/* Storage Provider Selector */}
           <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
@@ -284,26 +397,71 @@ export default function MediaLibraryPage() {
             <span className="text-gray-600">WebP</span>
           </label>
           
-          {/* Sync R2 Button */}
-          {storageConfig?.r2Configured && (
-            <button
-              onClick={handleSyncR2}
-              disabled={syncing}
-              className="flex items-center gap-2 px-3 py-2 bg-orange-100 text-orange-700 rounded-lg text-sm hover:bg-orange-200 disabled:opacity-50"
-              title="Sync files từ R2 vào Media Library"
-            >
-              <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
-              Sync R2
-            </button>
+          {/* Selection Mode Controls */}
+          {isSelectionMode ? (
+            <>
+              <button
+                onClick={selectAll}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+              >
+                Chọn tất cả
+              </button>
+              <button
+                onClick={deselectAll}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+              >
+                Bỏ chọn
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={selectedIds.size === 0 || deleting}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Trash2 size={16} />
+                )}
+                Xóa ({selectedIds.size})
+              </button>
+              <button
+                onClick={toggleSelectionMode}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+              >
+                Hủy
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={toggleSelectionMode}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg border border-gray-200"
+              >
+                Chọn nhiều
+              </button>
+              
+              {/* Sync R2 Button */}
+              {storageConfig?.r2Configured && (
+                <button
+                  onClick={handleSyncR2}
+                  disabled={syncing}
+                  className="flex items-center gap-2 px-3 py-2 bg-orange-100 text-orange-700 rounded-lg text-sm hover:bg-orange-200 disabled:opacity-50"
+                  title="Sync files từ R2 vào Media Library"
+                >
+                  <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+                  Sync R2
+                </button>
+              )}
+              
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              >
+                <Upload size={18} />
+                {t.media.uploadImage}
+              </button>
+            </>
           )}
-          
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-          >
-            <Upload size={18} />
-            {t.media.uploadImage}
-          </button>
           <input
             ref={fileInputRef}
             type="file"
@@ -394,9 +552,19 @@ export default function MediaLibraryPage() {
                   {filteredMedia.map((item) => (
                     <div
                       key={item.id}
-                      onClick={() => setSelectedMedia(item)}
-                      className={`group relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer border-2 ${
-                        selectedMedia?.id === item.id ? "border-blue-500" : "border-transparent"
+                      onClick={() => {
+                        if (isSelectionMode) {
+                          toggleItemSelection(item.id);
+                        } else {
+                          setSelectedMedia(item);
+                        }
+                      }}
+                      className={`group relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer border-2 transition-all ${
+                        isSelectionMode && selectedIds.has(item.id)
+                          ? "border-blue-500 ring-2 ring-blue-200"
+                          : selectedMedia?.id === item.id
+                          ? "border-blue-500"
+                          : "border-transparent hover:border-gray-300"
                       }`}
                     >
                       {item.mimeType.startsWith("image/") ? (
@@ -406,14 +574,37 @@ export default function MediaLibraryPage() {
                           <File size={32} className="text-gray-400" />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+                      <div className={`absolute inset-0 transition-colors ${
+                        isSelectionMode && selectedIds.has(item.id)
+                          ? "bg-blue-500/20"
+                          : "bg-black/0 group-hover:bg-black/30"
+                      }`} />
                       {getStorageBadge(item.storageProvider)}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      
+                      {/* Selection checkbox */}
+                      {isSelectionMode && (
+                        <div className={`absolute top-2 left-2 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                          selectedIds.has(item.id)
+                            ? "bg-blue-500 border-blue-500"
+                            : "bg-white/80 border-gray-400 group-hover:border-blue-400"
+                        }`}>
+                          {selectedIds.has(item.id) && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Delete button - only show when not in selection mode */}
+                      {!isSelectionMode && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -421,20 +612,53 @@ export default function MediaLibraryPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="text-left text-sm text-gray-500 border-b">
+                      {isSelectionMode && (
+                        <th className="pb-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.size === filteredMedia.length && filteredMedia.length > 0}
+                            onChange={(e) => e.target.checked ? selectAll() : deselectAll()}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </th>
+                      )}
                       <th className="pb-3 font-medium">File</th>
                       <th className="pb-3 font-medium">Storage</th>
                       <th className="pb-3 font-medium">Type</th>
                       <th className="pb-3 font-medium">Size</th>
-                      <th className="pb-3 font-medium">Actions</th>
+                      {!isSelectionMode && <th className="pb-3 font-medium">Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredMedia.map((item) => (
                       <tr
                         key={item.id}
-                        onClick={() => setSelectedMedia(item)}
-                        className={`border-b cursor-pointer ${selectedMedia?.id === item.id ? "bg-blue-50" : "hover:bg-gray-50"}`}
+                        onClick={() => {
+                          if (isSelectionMode) {
+                            toggleItemSelection(item.id);
+                          } else {
+                            setSelectedMedia(item);
+                          }
+                        }}
+                        className={`border-b cursor-pointer ${
+                          isSelectionMode && selectedIds.has(item.id)
+                            ? "bg-blue-50"
+                            : selectedMedia?.id === item.id
+                            ? "bg-blue-50"
+                            : "hover:bg-gray-50"
+                        }`}
                       >
+                        {isSelectionMode && (
+                          <td className="py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(item.id)}
+                              onChange={() => toggleItemSelection(item.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                          </td>
+                        )}
                         <td className="py-3">
                           <div className="flex items-center gap-3">
                             <div className="relative w-10 h-10 rounded overflow-hidden bg-gray-100">
@@ -462,14 +686,16 @@ export default function MediaLibraryPage() {
                         </td>
                         <td className="py-3 text-sm text-gray-500">{item.mimeType}</td>
                         <td className="py-3 text-sm text-gray-500">{formatFileSize(item.size)}</td>
-                        <td className="py-3">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                            className="p-1 hover:bg-gray-100 rounded text-red-500"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
+                        {!isSelectionMode && (
+                          <td className="py-3">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                              className="p-1 hover:bg-gray-100 rounded text-red-500"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

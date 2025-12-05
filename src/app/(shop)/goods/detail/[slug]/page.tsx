@@ -88,15 +88,18 @@ async function getRelatedProducts(productId: string) {
         take: remainingLimit,
       });
 
-      const autoProducts = autoRelated.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        price: p.salePrice || p.price,
-        originalPrice: p.salePrice ? p.price : null,
-        image: p.images?.[0]?.src || "",
-        featured: p.featured,
-      }));
+      const autoProducts = autoRelated.map((p: any) => {
+        const hasSale = p.salePrice && p.salePrice > 0;
+        return {
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          price: hasSale ? p.salePrice : p.price,
+          originalPrice: hasSale ? p.price : null,
+          image: p.images?.[0]?.src || "",
+          featured: p.featured,
+        };
+      });
 
       relatedProducts = [...relatedProducts, ...autoProducts];
     }

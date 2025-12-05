@@ -443,7 +443,7 @@ export default function ProductDetailClient({
               <li className="flex items-center gap-2 border-b border-gray-100 pb-4">
                 <Gift size={18} className="text-gray-400" />
                 <span className="text-gray-500">{t.points}:</span>
-                <span className="font-medium text-primary">+{Math.floor(product.price * 0.01).toLocaleString()}P</span>
+                <span className="font-medium text-primary">+{Math.floor(product.price * 0.01).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}P</span>
               </li>
             </ul>
 

@@ -143,18 +143,22 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
         if (prodRes.ok) {
           const prodData = await prodRes.json();
           // Transform products to match ProductCard interface
-          const transformedProducts = (prodData.data || []).map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            slug: p.slug,
-            price: p.salePrice || p.price,
-            originalPrice: p.salePrice ? p.price : null,
-            image: p.images?.[0]?.src || p.images?.[0]?.url || p.image || "",
-            isNew: p.isNew,
-            isBest: p.isBest || p.featured,
-            rating: p.averageRating || p.rating,
-            reviewCount: p.ratingCount || p.reviewCount,
-          }));
+          const transformedProducts = (prodData.data || []).map((p: any) => {
+            // Only use salePrice if it's greater than 0
+            const hasSale = p.salePrice && p.salePrice > 0;
+            return {
+              id: p.id,
+              name: p.name,
+              slug: p.slug,
+              price: hasSale ? p.salePrice : p.price,
+              originalPrice: hasSale ? p.price : null,
+              image: p.images?.[0]?.src || p.images?.[0]?.url || p.image || "",
+              isNew: p.isNew,
+              isBest: p.isBest || p.featured,
+              rating: p.averageRating || p.rating,
+              reviewCount: p.ratingCount || p.reviewCount,
+            };
+          });
           setProducts(transformedProducts);
         }
       } catch (error) {

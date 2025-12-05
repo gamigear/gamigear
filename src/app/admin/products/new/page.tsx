@@ -758,12 +758,12 @@ export default function NewProductPage() {
                 <h3 className="font-medium">{formData.name || t.products.productName}</h3>
                 <p className="text-lg font-bold mt-1">
                   {formData.regularPrice
-                    ? `₩${Number(formData.regularPrice).toLocaleString()}`
-                    : "₩0"}
+                    ? `${Number(formData.regularPrice).toLocaleString()}₫`
+                    : "0₫"}
                 </p>
                 {formData.salePrice && (
                   <p className="text-sm text-red-500">
-                    {t.products.salePrice}: ₩{Number(formData.salePrice).toLocaleString()}
+                    {t.products.salePrice}: {Number(formData.salePrice).toLocaleString()}₫
                   </p>
                 )}
               </div>

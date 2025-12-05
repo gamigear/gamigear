@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { verifyAdminAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/api-auth';
 
-// GET /api/users
+// GET /api/users (Admin only)
 export async function GET(request: NextRequest) {
+  const authResult = await verifyAdminAuth(request);
+  if (!authResult.success) {
+    return authResult.error === "Admin access required" 
+      ? forbiddenResponse(authResult.error)
+      : unauthorizedResponse(authResult.error);
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const role = searchParams.get('role');
@@ -63,8 +71,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/users
+// POST /api/users (Admin only)
 export async function POST(request: NextRequest) {
+  const authResult = await verifyAdminAuth(request);
+  if (!authResult.success) {
+    return authResult.error === "Admin access required" 
+      ? forbiddenResponse(authResult.error)
+      : unauthorizedResponse(authResult.error);
+  }
+
   try {
     const body = await request.json();
     const {

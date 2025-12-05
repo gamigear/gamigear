@@ -6,6 +6,7 @@ import {
   isR2Configured,
   type StorageProvider,
 } from "@/lib/storage";
+import { verifyAdminAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/api-auth";
 
 // GET /api/media - Get all media files
 export async function GET(request: NextRequest) {
@@ -50,8 +51,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/media - Upload new media
+// POST /api/media - Upload new media (Admin only)
 export async function POST(request: NextRequest) {
+  const authResult = await verifyAdminAuth(request);
+  if (!authResult.success) {
+    return authResult.error === "Admin access required" 
+      ? forbiddenResponse(authResult.error)
+      : unauthorizedResponse(authResult.error);
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;

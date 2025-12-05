@@ -2,7 +2,12 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+// SECURITY: Throw error if JWT_SECRET is not set in production
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("JWT_SECRET environment variable is required in production");
+}
+const SECURE_JWT_SECRET = JWT_SECRET || "dev-only-secret-do-not-use-in-production";
 const TOKEN_EXPIRY = "7d";
 
 export interface JWTPayload {
@@ -24,14 +29,26 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 
 // Generate JWT token
 export function generateToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign(payload, SECURE_JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
 }
 
-// Verify JWT token
+// Verify JWT token with proper signature verification
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
-  } catch {
+    // jwt.verify() validates both signature AND expiration
+    const decoded = jwt.verify(token, SECURE_JWT_SECRET) as JWTPayload;
+    
+    // Additional validation
+    if (!decoded.userId || !decoded.email || !decoded.type) {
+      return null;
+    }
+    
+    return decoded;
+  } catch (error) {
+    // Log for security monitoring (don't expose details to client)
+    if (process.env.NODE_ENV === "development") {
+      console.error("Token verification failed:", error);
+    }
     return null;
   }
 }

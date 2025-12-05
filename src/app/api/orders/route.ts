@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { verifyAdminAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/api-auth';
 
 // GET /api/orders - Lấy danh sách đơn hàng
 export async function GET(request: NextRequest) {

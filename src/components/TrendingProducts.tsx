@@ -19,10 +19,25 @@ interface Product {
   freeShipping?: boolean;
 }
 
-interface Tab {
+interface TrendingTab {
   id: string;
   label: string;
   emoji: string;
+  enabled: boolean;
+  hideOnMobile?: boolean;
+  selectionMode: "auto" | "manual";
+  autoFilter?: "featured" | "newest" | "on_sale" | "popular" | "category";
+  categorySlug?: string;
+  productIds?: string[];
+  limit?: number;
+}
+
+interface TrendingTabsConfig {
+  title: string;
+  subtitle: string;
+  showEmoji: boolean;
+  defaultLimit: number;
+  tabs: TrendingTab[];
 }
 
 interface TrendingProductsProps {
@@ -37,27 +52,64 @@ interface TrendingProductsProps {
   };
 }
 
-const defaultTabs: Tab[] = [
-  { id: "best", label: "BEST", emoji: "🥇" },
-  { id: "hot", label: "Hot Items", emoji: "🔥" },
-  { id: "new", label: "New Arrivals", emoji: "✨" },
-  { id: "sale", label: "On Sale", emoji: "💰" },
-];
+const defaultConfig: TrendingTabsConfig = {
+  title: "Xem giỏ hàng người khác",
+  subtitle: "Sản phẩm được yêu thích nhất",
+  showEmoji: true,
+  defaultLimit: 16,
+  tabs: [
+    { id: "best", label: "BEST", emoji: "🥇", enabled: true, selectionMode: "auto", autoFilter: "featured" },
+    { id: "hot", label: "Hot Items", emoji: "🔥", enabled: true, selectionMode: "auto", autoFilter: "popular" },
+    { id: "new", label: "New Arrivals", emoji: "✨", enabled: true, hideOnMobile: true, selectionMode: "auto", autoFilter: "newest" },
+    { id: "sale", label: "On Sale", emoji: "💰", enabled: true, selectionMode: "auto", autoFilter: "on_sale" },
+  ],
+};
 
 export default function TrendingProducts({ title, limit = 16, settings }: TrendingProductsProps) {
-  const [activeTab, setActiveTab] = useState("best");
+  const [config, setConfig] = useState<TrendingTabsConfig>(defaultConfig);
+  const [activeTab, setActiveTab] = useState<string>("");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [configLoading, setConfigLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(8);
   const isManualMode = settings?.selectionMode === "manual" && settings?.productIds?.length;
 
+  // Fetch config on mount
   useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch("/api/settings/trending-tabs");
+        if (res.ok) {
+          const data = await res.json();
+          setConfig(data);
+          // Set first enabled tab as active
+          const firstEnabledTab = data.tabs?.find((t: TrendingTab) => t.enabled);
+          if (firstEnabledTab) {
+            setActiveTab(firstEnabledTab.id);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching trending config:", error);
+        setActiveTab(defaultConfig.tabs[0].id);
+      } finally {
+        setConfigLoading(false);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  useEffect(() => {
+    if (configLoading || !activeTab) return;
+    
     if (isManualMode) {
       fetchManualProducts();
     } else {
-      fetchProducts(activeTab);
+      const currentTab = config.tabs.find((t) => t.id === activeTab);
+      if (currentTab) {
+        fetchProductsForTab(currentTab);
+      }
     }
-  }, [activeTab, isManualMode]);
+  }, [activeTab, isManualMode, configLoading]);
 
   const fetchManualProducts = async () => {
     if (!settings?.productIds?.length) return;
@@ -71,17 +123,20 @@ export default function TrendingProducts({ title, limit = 16, settings }: Trendi
         const filtered = settings.productIds
           .map((id: string) => allProducts.find((p: any) => p.id === id))
           .filter(Boolean)
-          .map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            brand: typeof p.brand === 'object' ? p.brand?.name : (p.brand || "Gamigear"),
-            price: p.salePrice || p.price,
-            originalPrice: p.salePrice ? p.price : null,
-            image: p.images?.[0]?.src || p.images?.[0]?.url || p.image || "",
-            isNew: p.isNew,
-            isBest: p.featured || p.isBest,
-            freeShipping: p.freeShipping || p.price > 500000,
-          }));
+          .map((p: any) => {
+            const hasSale = p.salePrice && p.salePrice > 0;
+            return {
+              id: p.id,
+              name: p.name,
+              brand: typeof p.brand === 'object' ? p.brand?.name : (p.brand || "Gamigear"),
+              price: hasSale ? p.salePrice : p.price,
+              originalPrice: hasSale ? p.price : null,
+              image: p.images?.[0]?.src || p.images?.[0]?.url || p.image || "",
+              isNew: p.isNew,
+              isBest: p.featured || p.isBest,
+              freeShipping: p.freeShipping || p.price > 500000,
+            };
+          });
         setProducts(filtered);
       }
     } catch (error) {
@@ -91,14 +146,64 @@ export default function TrendingProducts({ title, limit = 16, settings }: Trendi
     }
   };
 
-  const fetchProducts = async (tab: string) => {
+  const transformProduct = (p: any) => {
+    // Only use salePrice if it's greater than 0
+    const hasSale = p.salePrice && p.salePrice > 0;
+    return {
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      brand: typeof p.brand === 'object' ? p.brand?.name : (p.brand || "Gamigear"),
+      price: hasSale ? p.salePrice : p.price,
+      originalPrice: hasSale ? p.price : null,
+      image: p.images?.[0]?.src || p.images?.[0]?.url || p.image || "",
+      isNew: p.isNew,
+      isBest: p.featured || p.isBest,
+      freeShipping: p.freeShipping || p.price > 500000,
+    };
+  };
+
+  const fetchProductsForTab = async (tab: TrendingTab) => {
     setLoading(true);
+    const tabLimit = tab.limit || config.defaultLimit || limit;
+    
     try {
-      let url = `/api/products?limit=${limit}`;
-      if (tab === "best") url += "&featured=true";
-      else if (tab === "new") url += "&isNew=true";
-      else if (tab === "sale") url += "&onSale=true";
-      else if (tab === "hot") url += "&orderBy=sales";
+      // Manual mode for this tab
+      if (tab.selectionMode === "manual" && tab.productIds?.length) {
+        const res = await fetch(`/api/products?per_page=100`);
+        if (res.ok) {
+          const data = await res.json();
+          const allProducts = data.data || [];
+          const filtered = tab.productIds
+            .map((id: string) => allProducts.find((p: any) => p.id === id))
+            .filter(Boolean)
+            .map(transformProduct);
+          setProducts(filtered);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Auto mode
+      let url = `/api/products?per_page=${tabLimit}`;
+      
+      switch (tab.autoFilter) {
+        case "featured":
+          url += "&featured=true";
+          break;
+        case "newest":
+          url += "&sort=newest";
+          break;
+        case "on_sale":
+          url += "&on_sale=true";
+          break;
+        case "popular":
+          url += "&sort=popular";
+          break;
+        case "category":
+          if (tab.categorySlug) url += `&category=${tab.categorySlug}`;
+          break;
+      }
       
       // Apply settings filters
       if (settings?.category) url += `&category=${settings.category}`;
@@ -106,17 +211,23 @@ export default function TrendingProducts({ title, limit = 16, settings }: Trendi
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        const transformed = (data.data || []).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          brand: typeof p.brand === 'object' ? p.brand?.name : (p.brand || "Gamigear"),
-          price: p.salePrice || p.price,
-          originalPrice: p.salePrice ? p.price : null,
-          image: p.images?.[0]?.src || p.images?.[0]?.url || p.image || "",
-          isNew: p.isNew,
-          isBest: p.featured || p.isBest,
-          freeShipping: p.freeShipping || p.price > 500000,
-        }));
+        let transformed = (data.data || []).map(transformProduct);
+        
+        // If featured filter doesn't have enough products, fill with popular products
+        if (tab.autoFilter === "featured" && transformed.length < tabLimit) {
+          const fillUrl = `/api/products?per_page=${tabLimit}&sort=popular`;
+          const fillRes = await fetch(fillUrl);
+          if (fillRes.ok) {
+            const fillData = await fillRes.json();
+            const existingIds = new Set(transformed.map((p: Product) => p.id));
+            const additionalProducts = (fillData.data || [])
+              .filter((p: any) => !existingIds.has(p.id))
+              .slice(0, tabLimit - transformed.length)
+              .map(transformProduct);
+            transformed = [...transformed, ...additionalProducts];
+          }
+        }
+        
         setProducts(transformed);
       }
     } catch (error) {
@@ -132,20 +243,37 @@ export default function TrendingProducts({ title, limit = 16, settings }: Trendi
     setVisibleCount((prev) => Math.min(prev + 8, products.length));
   };
 
+  const enabledTabs = config.tabs.filter((t) => t.enabled);
+
+  if (configLoading) {
+    return (
+      <section className="mx-auto w-full max-w-[1280px] px-5 pc:px-4 mb-20 pc:mb-[120px]">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4" />
+          <div className="flex gap-2 mb-5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-10 w-24 bg-gray-200 rounded-full" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="mx-auto w-full max-w-[1280px] px-5 pc:px-4 mb-20 pc:mb-[120px]">
       {/* Title */}
       <div className="mb-4 pc:mb-9">
         <h2 className="text-xl pc:text-2xl font-bold">
-          {title || "Xem giỏ hàng của người khác"} 👀
+          {title || config.title} 👀
         </h2>
-        <p className="text-gray-500 text-sm mt-1">Sản phẩm được yêu thích nhất</p>
+        <p className="text-gray-500 text-sm mt-1">{config.subtitle}</p>
       </div>
 
       {/* Tabs */}
       <div className="mb-5 -mx-5 pc:mx-0 overflow-x-auto scrollbar-hide">
         <div className="flex gap-2 px-5 pc:px-0 pc:flex-wrap pc:gap-2">
-          {defaultTabs.map((tab) => (
+          {enabledTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => {
@@ -153,7 +281,7 @@ export default function TrendingProducts({ title, limit = 16, settings }: Trendi
                 setVisibleCount(8);
               }}
               className={`flex-shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition-all ${
-                tab.id === "new" ? "hidden pc:flex" : ""
+                tab.hideOnMobile ? "hidden pc:flex" : ""
               } ${
                 activeTab === tab.id
                   ? "bg-black text-white border-black"
@@ -161,7 +289,7 @@ export default function TrendingProducts({ title, limit = 16, settings }: Trendi
               }`}
             >
               <span>{tab.label}</span>
-              <span className="ml-1">{tab.emoji}</span>
+              {config.showEmoji && <span className="ml-1">{tab.emoji}</span>}
             </button>
           ))}
         </div>

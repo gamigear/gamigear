@@ -14,20 +14,20 @@ interface Currency {
 }
 
 interface PriceProps {
-  amount: number; // Price in VND (base currency)
+  amount: number; // Price in USD (base currency)
   className?: string;
-  showOriginal?: boolean; // Show original VND price when converted
+  showOriginal?: boolean; // Show original USD price when converted
 }
 
-// Default VND currency
+// Default USD currency (base currency)
 const DEFAULT_CURRENCY: Currency = {
-  code: "VND",
-  symbol: "₫",
-  symbolPosition: "after",
+  code: "USD",
+  symbol: "$",
+  symbolPosition: "before",
   exchangeRate: 1,
-  decimalPlaces: 0,
-  thousandSep: ".",
-  decimalSep: ",",
+  decimalPlaces: 2,
+  thousandSep: ",",
+  decimalSep: ".",
   isBase: true,
 };
 
@@ -41,7 +41,7 @@ export default function Price({ amount, className = "", showOriginal = false }: 
     // Load saved currency
     const loadCurrency = async () => {
       try {
-        const savedCode = localStorage.getItem("currency") || "VND";
+        const savedCode = localStorage.getItem("currency") || "USD";
         const res = await fetch("/api/currencies?active=true");
         const data = await res.json();
         if (data.data) {
@@ -63,8 +63,8 @@ export default function Price({ amount, className = "", showOriginal = false }: 
   }, []);
 
   const formatPrice = (amt: number, curr: Currency): string => {
-    // Convert from VND to target currency
-    const converted = curr.isBase ? amt : amt / curr.exchangeRate;
+    // Convert from base currency (USD) to target currency
+    const converted = curr.isBase ? amt : amt * curr.exchangeRate;
     
     const fixed = converted.toFixed(curr.decimalPlaces);
     const [intPart, decPart] = fixed.split(".");
@@ -80,11 +80,11 @@ export default function Price({ amount, className = "", showOriginal = false }: 
       : `${formattedAmount}${curr.symbol}`;
   };
 
-  // SSR fallback - show VND
+  // SSR fallback - show USD
   if (!mounted) {
     return (
       <span className={className}>
-        {amount.toLocaleString("vi-VN")}₫
+        ${amount.toFixed(2)}
       </span>
     );
   }
@@ -97,7 +97,7 @@ export default function Price({ amount, className = "", showOriginal = false }: 
       {formattedPrice}
       {showOriginal && isConverted && (
         <span className="text-gray-400 text-xs ml-1">
-          ({amount.toLocaleString("vi-VN")}₫)
+          (${amount.toFixed(2)})
         </span>
       )}
     </span>
@@ -111,7 +111,7 @@ export function usePrice() {
   useEffect(() => {
     const loadCurrency = async () => {
       try {
-        const savedCode = localStorage.getItem("currency") || "VND";
+        const savedCode = localStorage.getItem("currency") || "USD";
         const res = await fetch("/api/currencies?active=true");
         const data = await res.json();
         if (data.data) {
@@ -132,7 +132,7 @@ export function usePrice() {
   }, []);
 
   const formatPrice = (amount: number): string => {
-    const converted = currency.isBase ? amount : amount / currency.exchangeRate;
+    const converted = currency.isBase ? amount : amount * currency.exchangeRate;
     
     const fixed = converted.toFixed(currency.decimalPlaces);
     const [intPart, decPart] = fixed.split(".");

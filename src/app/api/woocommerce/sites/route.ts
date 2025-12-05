@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyAdminAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/api-auth";
 
-// GET - List all WooCommerce sites
-export async function GET() {
+// GET - List all WooCommerce sites (Admin only)
+export async function GET(request: NextRequest) {
+  const authResult = await verifyAdminAuth(request);
+  if (!authResult.success) {
+    return authResult.error === "Admin access required" 
+      ? forbiddenResponse(authResult.error)
+      : unauthorizedResponse(authResult.error);
+  }
+
   try {
     const sites = await prisma.wooCommerceSite.findMany({
       orderBy: { createdAt: "desc" },
@@ -26,8 +34,15 @@ export async function GET() {
   }
 }
 
-// POST - Create new WooCommerce site
+// POST - Create new WooCommerce site (Admin only)
 export async function POST(request: NextRequest) {
+  const authResult = await verifyAdminAuth(request);
+  if (!authResult.success) {
+    return authResult.error === "Admin access required" 
+      ? forbiddenResponse(authResult.error)
+      : unauthorizedResponse(authResult.error);
+  }
+
   try {
     const body = await request.json();
     const { name, url, consumerKey, consumerSecret } = body;

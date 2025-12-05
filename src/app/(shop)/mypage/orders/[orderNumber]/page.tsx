@@ -149,7 +149,7 @@ export default function OrderDetailPage() {
                   {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                 </button>
               </div>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500" suppressHydrationWarning>
                 {new Date(order.createdAt).toLocaleString("vi-VN")}
               </span>
             </div>

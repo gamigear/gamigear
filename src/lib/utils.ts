@@ -7,7 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatPrice(price: number, currency: string = "₫"): string {
   // Use a fixed format to avoid hydration mismatch between server and client
-  const formatted = price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  // Use dot as thousand separator for VND (Vietnamese standard)
+  const formatted = price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return formatted + currency;
 }
 

@@ -199,17 +199,13 @@ export default function HeroBanner() {
               className="hero-swiper-prev hidden pc:flex absolute left-[calc(50%-660px)] top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/90 rounded-full items-center justify-center hover:bg-white transition-colors shadow-lg"
               aria-label="Previous"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <img src="https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/public/images/icons/common/ico_chevron_left_tight_64.svg" alt="prev" width={24} height={24} />
             </button>
             <button 
               className="hero-swiper-next hidden pc:flex absolute right-[calc(50%-660px)] top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/90 rounded-full items-center justify-center hover:bg-white transition-colors shadow-lg"
               aria-label="Next"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <img src="https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/public/images/icons/common/ico_chevron_right_tight_64.svg" alt="next" width={24} height={24} />
             </button>
           </>
         )}

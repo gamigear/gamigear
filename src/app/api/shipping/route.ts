@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { verifyAdminAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/api-auth';
 
 // GET /api/shipping
 export async function GET() {
@@ -55,8 +56,15 @@ export async function GET() {
   }
 }
 
-// POST /api/shipping - Create shipping zone
+// POST /api/shipping - Create shipping zone (Admin only)
 export async function POST(request: NextRequest) {
+  const authResult = await verifyAdminAuth(request);
+  if (!authResult.success) {
+    return authResult.error === "Admin access required" 
+      ? forbiddenResponse(authResult.error)
+      : unauthorizedResponse(authResult.error);
+  }
+
   try {
     const body = await request.json();
     const { name, slug, type = 'global', locations = [], methods = [] } = body;

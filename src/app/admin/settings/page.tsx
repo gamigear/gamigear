@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Store, Bell, Lock, CreditCard, Globe, Image as ImageIcon, Search as SearchIcon, Save, Loader2, Truck, ChevronDown, ChevronUp } from "lucide-react";
+import { User, Store, Bell, Lock, CreditCard, Globe, Image as ImageIcon, Search as SearchIcon, Save, Loader2, Truck, ChevronDown, ChevronUp, FolderOpen } from "lucide-react";
 import Card from "@/components/admin/Card";
+import MediaPicker from "@/components/admin/MediaPicker";
 
 const tabs = [
   { id: "general", label: "Cài đặt chung", icon: Globe },
@@ -40,7 +41,10 @@ const defaultInternationalZones: ShippingZone[] = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const [showInternationalZones, setShowInternationalZones] = useState(false);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [mediaPickerTarget, setMediaPickerTarget] = useState<"logo" | "logoTransparent" | "favicon" | null>(null);
   
   const [formData, setFormData] = useState({
     // General
@@ -48,6 +52,7 @@ export default function SettingsPage() {
     siteTagline: "Thiết bị gaming cho nhà vô địch",
     siteDescription: "Gaming gear for champions - Thiết bị gaming chất lượng cao",
     logo: "",
+    logoTransparent: "", // Logo cho header trong suốt (trang chủ)
     favicon: "",
     // SEO
     metaTitle: "Gamigear - Thiết bị gaming cho nhà vô địch",
@@ -67,6 +72,44 @@ export default function SettingsPage() {
     email: "admin@gamigear.vn",
     phone: "0123 456 789",
   });
+
+  // Load settings from API on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          const s = data.settings || {};
+          setFormData(prev => ({
+            ...prev,
+            siteName: s.siteName || prev.siteName,
+            siteTagline: s.siteTagline || prev.siteTagline,
+            siteDescription: s.siteDescription || prev.siteDescription,
+            logo: s.logo || prev.logo,
+            logoTransparent: s.logoTransparent || prev.logoTransparent,
+            favicon: s.favicon || prev.favicon,
+            metaTitle: s.metaTitle || prev.metaTitle,
+            metaDescription: s.metaDescription || prev.metaDescription,
+            metaKeywords: s.metaKeywords || prev.metaKeywords,
+            storeName: s.storeName || prev.storeName,
+            storeEmail: s.storeEmail || prev.storeEmail,
+            storePhone: s.storePhone || prev.storePhone,
+            storeAddress: s.storeAddress || prev.storeAddress,
+            currency: s.currency || prev.currency,
+            currencySymbol: s.currencySymbol || prev.currencySymbol,
+            currencyPosition: s.currencyPosition || prev.currencyPosition,
+            language: s.language || prev.language,
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Shipping settings
   const [shippingSettings, setShippingSettings] = useState({
@@ -96,10 +139,45 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setLoading(true);
-    // Simulate save
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setLoading(false);
-    alert("Đã lưu cài đặt thành công!");
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: {
+            siteName: formData.siteName,
+            siteTagline: formData.siteTagline,
+            siteDescription: formData.siteDescription,
+            logo: formData.logo,
+            logoTransparent: formData.logoTransparent,
+            favicon: formData.favicon,
+            metaTitle: formData.metaTitle,
+            metaDescription: formData.metaDescription,
+            metaKeywords: formData.metaKeywords,
+            storeName: formData.storeName,
+            storeEmail: formData.storeEmail,
+            storePhone: formData.storePhone,
+            storeAddress: formData.storeAddress,
+            currency: formData.currency,
+            currencySymbol: formData.currencySymbol,
+            currencyPosition: formData.currencyPosition,
+            language: formData.language,
+          }
+        }),
+      });
+      
+      if (res.ok) {
+        alert("Đã lưu cài đặt thành công!");
+      } else {
+        const data = await res.json();
+        alert(`Lỗi: ${data.error || 'Không thể lưu cài đặt'}`);
+      }
+    } catch (error) {
+      console.error('Save settings error:', error);
+      alert("Có lỗi xảy ra khi lưu cài đặt!");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -184,14 +262,28 @@ export default function SettingsPage() {
                         ) : (
                           <ImageIcon size={32} className="mx-auto text-gray-300 mb-2" />
                         )}
-                        <input
-                          type="text"
-                          placeholder="Nhập URL logo"
-                          value={formData.logo}
-                          onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
-                        />
-                        <p className="text-xs text-gray-500 mt-2">Khuyến nghị: 200x50px, PNG/SVG</p>
+                        <div className="flex gap-2 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Nhập URL logo"
+                            value={formData.logo}
+                            onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMediaPickerTarget("logo");
+                              setShowMediaPicker(true);
+                            }}
+                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm flex items-center gap-1"
+                            title="Chọn từ Media"
+                          >
+                            <FolderOpen size={16} />
+                            Media
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500">Khuyến nghị: 200x50px, PNG/SVG</p>
                       </div>
                     </div>
                     <div>
@@ -202,15 +294,68 @@ export default function SettingsPage() {
                         ) : (
                           <ImageIcon size={32} className="mx-auto text-gray-300 mb-2" />
                         )}
+                        <div className="flex gap-2 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Nhập URL favicon"
+                            value={formData.favicon}
+                            onChange={(e) => setFormData({ ...formData, favicon: e.target.value })}
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMediaPickerTarget("favicon");
+                              setShowMediaPicker(true);
+                            }}
+                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm flex items-center gap-1"
+                            title="Chọn từ Media"
+                          >
+                            <FolderOpen size={16} />
+                            Media
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500">Khuyến nghị: 32x32px, ICO/PNG</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Logo cho Header trong suốt */}
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium mb-2">
+                      Logo cho Header trong suốt (Trang chủ)
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Logo này sẽ hiển thị khi header ở chế độ trong suốt trên trang chủ. Nên dùng logo màu trắng hoặc sáng.
+                    </p>
+                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center bg-gray-800">
+                      {formData.logoTransparent ? (
+                        <img src={formData.logoTransparent} alt="Logo Transparent" className="h-16 mx-auto mb-2" />
+                      ) : (
+                        <ImageIcon size={32} className="mx-auto text-gray-500 mb-2" />
+                      )}
+                      <div className="flex gap-2 mb-2">
                         <input
                           type="text"
-                          placeholder="Nhập URL favicon"
-                          value={formData.favicon}
-                          onChange={(e) => setFormData({ ...formData, favicon: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
+                          placeholder="Nhập URL logo cho header trong suốt"
+                          value={formData.logoTransparent}
+                          onChange={(e) => setFormData({ ...formData, logoTransparent: e.target.value })}
+                          className="flex-1 px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded text-sm placeholder-gray-400"
                         />
-                        <p className="text-xs text-gray-500 mt-2">Khuyến nghị: 32x32px, ICO/PNG</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMediaPickerTarget("logoTransparent");
+                            setShowMediaPicker(true);
+                          }}
+                          className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded text-sm flex items-center gap-1"
+                          title="Chọn từ Media"
+                        >
+                          <FolderOpen size={16} />
+                          Media
+                        </button>
                       </div>
+                      <p className="text-xs text-gray-400">Khuyến nghị: Logo màu trắng, 200x50px, PNG với nền trong suốt</p>
                     </div>
                   </div>
                 </div>
@@ -855,6 +1000,31 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* Media Picker Modal */}
+      <MediaPicker
+        isOpen={showMediaPicker}
+        onClose={() => {
+          setShowMediaPicker(false);
+          setMediaPickerTarget(null);
+        }}
+        onSelect={(url) => {
+          if (mediaPickerTarget === "logo") {
+            setFormData({ ...formData, logo: url });
+          } else if (mediaPickerTarget === "logoTransparent") {
+            setFormData({ ...formData, logoTransparent: url });
+          } else if (mediaPickerTarget === "favicon") {
+            setFormData({ ...formData, favicon: url });
+          }
+        }}
+        currentImage={
+          mediaPickerTarget === "logo" 
+            ? formData.logo 
+            : mediaPickerTarget === "logoTransparent"
+            ? formData.logoTransparent
+            : formData.favicon
+        }
+      />
     </div>
   );
 }

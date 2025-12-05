@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronUp } from "lucide-react";
+
+const ICON_TOP = "https://hi-store.co.kr/images/icons/common/ico_top_pc_24.svg";
 
 export default function BackToTop() {
   const [isVisible, setIsVisible] = useState(false);
@@ -27,7 +28,7 @@ export default function BackToTop() {
       }`}
       aria-label="Back to top"
     >
-      <ChevronUp size={22} />
+      <img src={ICON_TOP} alt="top" width={22} height={22} className="invert" />
     </button>
   );
 }

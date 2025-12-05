@@ -229,26 +229,10 @@ export default function TopBannerSlider() {
 
       {/* Navigation Arrows */}
       <button className="top-banner-prev absolute left-4 pc:left-8 top-1/2 -translate-y-1/2 z-10 w-12 h-12 pc:w-14 pc:h-14 flex items-center justify-center bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full text-white transition-all shadow-lg">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M15 18L9 12L15 6"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <img src="https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/public/images/icons/common/ico_chevron_left_tight_64.svg" alt="prev" width={28} height={28} className="invert" />
       </button>
       <button className="top-banner-next absolute right-4 pc:right-8 top-1/2 -translate-y-1/2 z-10 w-12 h-12 pc:w-14 pc:h-14 flex items-center justify-center bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full text-white transition-all shadow-lg">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M9 18L15 12L9 6"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <img src="https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/public/images/icons/common/ico_chevron_right_tight_64.svg" alt="next" width={28} height={28} className="invert" />
       </button>
 
       {/* Bottom Bar: Pagination + Filters */}

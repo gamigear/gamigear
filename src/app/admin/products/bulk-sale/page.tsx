@@ -9,6 +9,7 @@ import {
   Trash2,
   CheckCircle,
   AlertCircle,
+  Wrench,
 } from "lucide-react";
 import Card from "@/components/admin/Card";
 
@@ -26,6 +27,7 @@ interface Product {
   regularPrice: number | null;
   salePrice: number | null;
   onSale: boolean;
+  productType: string;
   images: Array<{ src: string }>;
 }
 
@@ -109,15 +111,29 @@ export default function BulkSalePage() {
   };
 
   // Filter products based on criteria
+  // Note: Variable products may have price=0, so we don't filter them by price here
+  // The API will handle filtering variations by price
   const filteredProducts = products.filter((p) => {
+    // Skip price filter for variable products (price is in variations)
+    if (p.productType === "variable") return true;
     if (minPrice > 0 && p.price < minPrice) return false;
     if (maxPrice > 0 && p.price > maxPrice) return false;
     return true;
   });
 
   const applySale = async () => {
+    if (selectedProducts.size === 0 && selectedCategories.size === 0) {
+      alert("Vui lòng chọn sản phẩm hoặc danh mục để áp dụng giảm giá");
+      return;
+    }
+
     if (discountValue <= 0) {
       alert("Vui lòng nhập giá trị giảm giá hợp lệ");
+      return;
+    }
+
+    if (discountType === "percentage" && discountValue > 100) {
+      alert("Phần trăm giảm giá không được vượt quá 100%");
       return;
     }
 
@@ -142,15 +158,20 @@ export default function BulkSalePage() {
       const data = await response.json();
       
       if (data.success) {
-        setResults(data.results.products);
+        setResults(data.results.products || []);
         setShowResults(true);
-        alert(`Đã áp dụng giảm giá cho ${data.results.updated} sản phẩm!\nBỏ qua: ${data.results.skipped} sản phẩm`);
+        const variationsMsg = data.results.variationsUpdated > 0 
+          ? `\nBiến thể đã cập nhật: ${data.results.variationsUpdated}` 
+          : "";
+        alert(`Đã áp dụng giảm giá cho ${data.results.updated} sản phẩm!${variationsMsg}\nBỏ qua: ${data.results.skipped} sản phẩm`);
         fetchData();
         setSelectedProducts(new Set());
+        setSelectedCategories(new Set());
       } else {
         alert("Lỗi: " + (data.error || "Không thể áp dụng giảm giá"));
       }
     } catch (error) {
+      console.error("Apply sale error:", error);
       alert("Lỗi: " + (error instanceof Error ? error.message : "Unknown error"));
     } finally {
       setApplying(false);
@@ -158,6 +179,11 @@ export default function BulkSalePage() {
   };
 
   const removeSale = async () => {
+    if (selectedProducts.size === 0 && selectedCategories.size === 0) {
+      alert("Vui lòng chọn sản phẩm hoặc danh mục để xóa giảm giá");
+      return;
+    }
+
     if (!confirm("Bạn có chắc muốn xóa giá khuyến mãi của các sản phẩm đã chọn?")) return;
 
     setApplying(true);
@@ -174,13 +200,56 @@ export default function BulkSalePage() {
       const data = await response.json();
       
       if (data.success) {
-        alert(`Đã xóa giá khuyến mãi của ${data.updated} sản phẩm!`);
+        const variationsMsg = data.variationsUpdated > 0 
+          ? `\nBiến thể đã xóa KM: ${data.variationsUpdated}` 
+          : "";
+        alert(`Đã xóa giá khuyến mãi của ${data.updated} sản phẩm!${variationsMsg}`);
         fetchData();
         setSelectedProducts(new Set());
+        setSelectedCategories(new Set());
       } else {
         alert("Lỗi: " + (data.error || "Không thể xóa giá khuyến mãi"));
       }
     } catch (error) {
+      console.error("Remove sale error:", error);
+      alert("Lỗi: " + (error instanceof Error ? error.message : "Unknown error"));
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  // Fix invalid sale prices (sale price >= regular price)
+  const fixInvalidSales = async () => {
+    if (!confirm("Tìm và ẩn các sản phẩm có giá KM >= giá gốc?\n(Áp dụng cho tất cả sản phẩm hoặc sản phẩm/danh mục đã chọn)")) return;
+
+    setApplying(true);
+    try {
+      const response = await fetch("/api/products/bulk-sale", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productIds: Array.from(selectedProducts),
+          categoryIds: Array.from(selectedCategories),
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        if (data.productsFixed === 0 && data.variationsFixed === 0) {
+          alert("Không tìm thấy sản phẩm nào cần sửa!");
+        } else {
+          const variationsMsg = data.variationsFixed > 0 
+            ? `\nBiến thể đã sửa: ${data.variationsFixed}` 
+            : "";
+          alert(`Đã sửa ${data.productsFixed} sản phẩm có giá KM không hợp lệ!${variationsMsg}`);
+        }
+        fetchData();
+      } else {
+        alert("Lỗi: " + (data.error || "Không thể sửa giá khuyến mãi"));
+      }
+    } catch (error) {
+      console.error("Fix sale error:", error);
       alert("Lỗi: " + (error instanceof Error ? error.message : "Unknown error"));
     } finally {
       setApplying(false);
@@ -375,10 +444,26 @@ export default function BulkSalePage() {
               onClick={removeSale}
               disabled={applying || (selectedProducts.size === 0 && selectedCategories.size === 0)}
               className="flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              title="Xóa giá khuyến mãi"
             >
               <Trash2 size={18} />
             </button>
           </div>
+
+          {/* Fix Invalid Sales */}
+          <button
+            onClick={fixInvalidSales}
+            disabled={applying}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
+            title="Ẩn giá KM khi giá KM >= giá gốc"
+          >
+            {applying ? (
+              <RefreshCw className="animate-spin" size={18} />
+            ) : (
+              <Wrench size={18} />
+            )}
+            Sửa giá KM lỗi (KM ≥ Gốc)
+          </button>
         </div>
 
         {/* Products List */}
@@ -416,9 +501,10 @@ export default function BulkSalePage() {
                 </thead>
                 <tbody className="divide-y">
                   {filteredProducts.map((product) => {
+                    const isVariable = product.productType === "variable";
                     const originalPrice = product.regularPrice || product.price;
                     const previewPrice = previewDiscount(originalPrice);
-                    const discountPercent = Math.round((1 - previewPrice / originalPrice) * 100);
+                    const discountPercent = originalPrice > 0 ? Math.round((1 - previewPrice / originalPrice) * 100) : 0;
                     
                     return (
                       <tr key={product.id} className="hover:bg-gray-50">
@@ -431,23 +517,38 @@ export default function BulkSalePage() {
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <p className="font-medium line-clamp-1">{product.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium line-clamp-1">{product.name}</p>
+                            {isVariable && (
+                              <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-xs whitespace-nowrap">
+                                Biến thể
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className={product.onSale ? "text-gray-400 line-through" : ""}>
-                            {originalPrice.toLocaleString()}₩
-                          </span>
+                          {isVariable && originalPrice === 0 ? (
+                            <span className="text-gray-500 text-sm">Nhiều giá</span>
+                          ) : (
+                            <span className={product.onSale ? "text-gray-400 line-through" : ""}>
+                              {originalPrice.toLocaleString()}₩
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           {selectedProducts.has(product.id) ? (
-                            <div>
-                              <span className="text-red-600 font-medium">
-                                {previewPrice.toLocaleString()}₩
-                              </span>
-                              <span className="text-xs text-green-600 ml-1">
-                                -{discountPercent}%
-                              </span>
-                            </div>
+                            isVariable && originalPrice === 0 ? (
+                              <span className="text-blue-600 text-sm">Áp dụng cho biến thể</span>
+                            ) : (
+                              <div>
+                                <span className="text-red-600 font-medium">
+                                  {previewPrice.toLocaleString()}₩
+                                </span>
+                                <span className="text-xs text-green-600 ml-1">
+                                  -{discountPercent}%
+                                </span>
+                              </div>
+                            )
                           ) : product.onSale && product.salePrice ? (
                             <span className="text-red-600">
                               {product.salePrice.toLocaleString()}₩

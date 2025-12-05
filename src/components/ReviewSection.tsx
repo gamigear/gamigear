@@ -52,6 +52,7 @@ export default function ReviewSection() {
   };
 
   const formatDate = (dateStr: string) => {
+    if (!mounted) return ""; // Avoid hydration mismatch
     const date = new Date(dateStr);
     return date.toLocaleDateString('vi-VN');
   };

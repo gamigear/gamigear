@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { verifyAdminAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/api-auth";
 
-// POST - Bulk edit products
+// POST - Bulk edit products (Admin only)
 export async function POST(request: NextRequest) {
+  const authResult = await verifyAdminAuth(request);
+  if (!authResult.success) {
+    return authResult.error === "Admin access required" 
+      ? forbiddenResponse(authResult.error)
+      : unauthorizedResponse(authResult.error);
+  }
+
   try {
     const body = await request.json();
     const {

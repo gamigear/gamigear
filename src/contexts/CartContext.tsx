@@ -31,6 +31,7 @@ interface CartContextType {
   removeCoupon: () => void;
   isInCart: (productId: string) => boolean;
   getItemQuantity: (productId: string) => number;
+  isHydrated: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -71,7 +72,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items, couponCode, discount, isLoaded]);
 
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  // Only calculate itemCount after hydration to avoid mismatch
+  const itemCount = isLoaded ? items.reduce((sum, item) => sum + item.quantity, 0) : 0;
 
   const subtotal = items.reduce((sum, item) => {
     const price = item.salePrice || item.price;
@@ -183,6 +185,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeCoupon,
         isInCart,
         getItemQuantity,
+        isHydrated: isLoaded,
       }}
     >
       {children}

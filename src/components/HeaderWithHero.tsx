@@ -57,7 +57,7 @@ const defaultMenus = {
 
 export default function HeaderWithHero() {
   const { user, isAuthenticated, logout, loading } = useAuth();
-  const { itemCount } = useCart();
+  const { itemCount, isHydrated: cartHydrated } = useCart();
   const { t } = useShopTranslation();
   const [mounted, setMounted] = useState(false);
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -71,6 +71,7 @@ export default function HeaderWithHero() {
   const [isMobileLangOpen, setIsMobileLangOpen] = useState(false);
   const swiperRef = useRef<SwiperType | null>(null);
   const { locale, setLocale } = useShopTranslation();
+  const [logoUrl, setLogoUrl] = useState<string>("");
   
   const languages = [
     { code: "ko" as const, name: "한국어", flag: "🇰🇷" },
@@ -86,11 +87,18 @@ export default function HeaderWithHero() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [bannersRes, menusRes, categoriesRes] = await Promise.all([
+      const [bannersRes, menusRes, categoriesRes, settingsRes] = await Promise.all([
         fetch("/api/banners?active=true"),
         fetch("/api/menus"),
         fetch("/api/banner-categories?active=true"),
+        fetch("/api/settings"),
       ]);
+      
+      // Load logo from settings
+      const settingsData = await settingsRes.json();
+      if (settingsData.settings?.logoTransparent) {
+        setLogoUrl(settingsData.settings.logoTransparent);
+      }
 
       const bannersData = await bannersRes.json();
       const menusData = await menusRes.json();
@@ -171,7 +179,11 @@ export default function HeaderWithHero() {
             {/* Center - Logo */}
             <h1 className="hd-mobile-center">
               <Link href="/">
-                <span className="logo-text">GAMIGEAR</span>
+                {mounted && logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="mobile-logo-img" />
+                ) : (
+                  <span className="logo-text">GAMIGEAR</span>
+                )}
               </Link>
             </h1>
             
@@ -388,7 +400,11 @@ export default function HeaderWithHero() {
           <div className="hd-contain">
             <h1>
               <Link href="/">
-                <span className="logo-text">GAMIGEAR</span>
+                {mounted && logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="desktop-logo-img" />
+                ) : (
+                  <span className="logo-text">GAMIGEAR</span>
+                )}
               </Link>
             </h1>
 
@@ -499,7 +515,7 @@ export default function HeaderWithHero() {
                   <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
                 </svg>
                 Giỏ hàng
-                {itemCount > 0 && <span className="cart-count">{itemCount > 99 ? "99+" : itemCount}</span>}
+                {mounted && cartHydrated && itemCount > 0 && <span className="cart-count">{itemCount > 99 ? "99+" : itemCount}</span>}
               </Link>
             </div>
           </div>
@@ -617,6 +633,16 @@ export default function HeaderWithHero() {
           color: #fff;
           letter-spacing: -0.5px;
           white-space: nowrap;
+        }
+        .desktop-logo-img {
+          height: 40px;
+          width: auto;
+          object-fit: contain;
+        }
+        .mobile-logo-img {
+          height: 32px;
+          width: auto;
+          object-fit: contain;
         }
         .top-search-wrap {
           width: 350px;

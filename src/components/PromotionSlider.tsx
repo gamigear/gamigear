@@ -84,6 +84,7 @@ export default function PromotionSlider() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return texts.noExpiry;
+    if (!mounted) return ""; // Avoid hydration mismatch
     const date = new Date(dateStr);
     return date.toLocaleDateString("vi-VN", {
       day: "2-digit",
@@ -96,12 +97,14 @@ export default function PromotionSlider() {
     if (coupon.discountType === "percent") {
       return `-${coupon.amount}%`;
     }
-    return `-${coupon.amount.toLocaleString()}đ`;
+    // Use simple formatting to avoid hydration mismatch
+    return `-${coupon.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}đ`;
   };
 
   const formatMinAmount = (amount: number | null) => {
     if (!amount) return null;
-    return `${amount.toLocaleString()}đ`;
+    // Use simple formatting to avoid hydration mismatch
+    return `${amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}đ`;
   };
 
   const handleCopy = async (code: string, id: string) => {

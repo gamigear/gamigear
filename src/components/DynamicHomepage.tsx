@@ -90,19 +90,22 @@ export default function DynamicHomepage({ initialProducts }: DynamicHomepageProp
       
       setCustomProducts((prev) => ({
         ...prev,
-        [section.id]: data.data?.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          slug: p.slug || p.id,
-          price: p.salePrice || p.price,
-          originalPrice: p.regularPrice,
-          image: p.images?.[0]?.src || p.images?.[0] || "",
-          rating: p.averageRating,
-          reviewCount: p.ratingCount,
-          brand: p.brand?.name,
-          category: p.categories?.[0]?.name,
-          categoryId: p.categories?.[0]?.id,
-        })) || [],
+        [section.id]: data.data?.map((p: any) => {
+          const hasSale = p.salePrice && p.salePrice > 0;
+          return {
+            id: p.id,
+            name: p.name,
+            slug: p.slug || p.id,
+            price: hasSale ? p.salePrice : p.price,
+            originalPrice: hasSale ? p.regularPrice : null,
+            image: p.images?.[0]?.src || p.images?.[0] || "",
+            rating: p.averageRating,
+            reviewCount: p.ratingCount,
+            brand: p.brand?.name,
+            category: p.categories?.[0]?.name,
+            categoryId: p.categories?.[0]?.id,
+          };
+        }) || [],
       }));
     } catch (error) {
       console.error("Failed to fetch products for section:", error);

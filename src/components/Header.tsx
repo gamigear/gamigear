@@ -2,13 +2,23 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, Menu, X, User, ShoppingCart, Truck, LogOut, ChevronDown, ChevronRight, Grid3X3 } from "lucide-react";
-import Image from "next/image";
+import { Search, Menu, X, LogOut, ChevronDown, ChevronRight, Grid3X3 } from "lucide-react";
+
+// Custom icon URLs
+const ICON_CART = "https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/_next/static/media/ico_cart_mo_24.04e883c1.svg";
+const ICON_USER = "https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/_next/static/media/ico_person_mo_24.08b1a41d.svg";
+const ICON_SHIPPING = "https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/_next/static/media/header_ico_car.206962cc.svg";
+const ICON_CATEGORY = "https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/_next/static/media/ico_category_white_16.92706541.svg";
+// Image import removed - using img tags for external URLs
 import { useAuth } from "@/contexts/AuthContext";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, type CartItem } from "@/contexts/CartContext";
 import { useShopTranslation } from "@/lib/i18n/useShopTranslation";
 import LanguageSwitcher from "./LanguageSwitcher";
 import CurrencySwitcher from "./CurrencySwitcher";
+
+interface HeaderProps {
+  transparent?: boolean; // Chế độ header trong suốt cho trang chủ
+}
 
 interface MenuItem {
   id: string;
@@ -49,9 +59,9 @@ const defaultMenus: MenuData = {
   ],
 };
 
-export default function Header() {
+export default function Header({ transparent = false }: HeaderProps) {
   const { user, isAuthenticated, logout, loading } = useAuth();
-  const { itemCount } = useCart();
+  const { itemCount, isHydrated: cartHydrated } = useCart();
   const { t } = useShopTranslation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -62,6 +72,20 @@ export default function Header() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [siteSettings, setSiteSettings] = useState<{ logo?: string; logoTransparent?: string; siteName?: string }>({});
+
+  // Handle scroll for transparent header
+  useEffect(() => {
+    if (!transparent) return;
+    
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [transparent]);
 
   useEffect(() => {
     setMounted(true);
@@ -84,6 +108,20 @@ export default function Header() {
         }
       })
       .catch(console.error);
+
+    // Fetch site settings for logo
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.settings) {
+          setSiteSettings({
+            logo: data.settings.logo,
+            logoTransparent: data.settings.logoTransparent,
+            siteName: data.settings.siteName,
+          });
+        }
+      })
+      .catch(console.error);
   }, []);
 
   // Get active menu items from API data
@@ -96,10 +134,25 @@ export default function Header() {
     setIsMobileMenuOpen(false);
   };
 
+  // Determine if we should show transparent style
+  const showTransparent = transparent && !isScrolled;
+  
+  // Get the appropriate logo - only use after mounted to avoid hydration mismatch
+  const currentLogo = mounted 
+    ? (showTransparent && siteSettings.logoTransparent 
+        ? siteSettings.logoTransparent 
+        : siteSettings.logo)
+    : undefined;
+  const siteName = mounted && siteSettings.siteName ? siteSettings.siteName : "Gamigear";
+
   return (
-    <header className="relative w-full bg-white z-[600]">
+    <header className={`relative w-full z-[600] transition-all duration-300 ${
+      showTransparent 
+        ? 'bg-transparent absolute top-0 left-0 right-0' 
+        : 'bg-white'
+    }`}>
       {/* Top Bar - Desktop Only */}
-      <div className="hidden pc:block bg-black">
+      <div className={`hidden pc:block ${showTransparent ? 'bg-black/30' : 'bg-black'}`}>
         <div className="mx-auto w-full max-w-[1280px]">
           <div className="flex h-10 items-center justify-between px-4">
             <ul className="flex items-center gap-6">
@@ -206,37 +259,47 @@ export default function Header() {
       <div className="hidden pc:block mx-auto w-full max-w-[1280px] px-4">
         <div className="flex items-center justify-between h-[92px] relative">
           <Link href="/" className="flex-shrink-0">
-            <h1 className="text-2xl font-bold text-black">Gamigear</h1>
+            {currentLogo ? (
+              <img src={currentLogo} alt={siteName} className="h-10 object-contain" />
+            ) : (
+              <h1 className={`text-2xl font-bold ${showTransparent ? 'text-white' : 'text-black'}`}>
+                {siteName}
+              </h1>
+            )}
           </Link>
 
           <div className="absolute left-[150px] top-1/2 -translate-y-1/2">
-            <div className="flex items-center w-[480px] h-11 bg-gray-100 rounded-full px-4">
+            <div className={`flex items-center w-[480px] h-11 rounded-full px-4 ${
+              showTransparent ? 'bg-white/20 backdrop-blur-sm' : 'bg-gray-100'
+            }`}>
               <input
                 type="text"
                 placeholder={mounted ? t.header.searchPlaceholder : "검색어를 입력하세요"}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-sm"
+                className={`flex-1 bg-transparent outline-none text-sm ${
+                  showTransparent ? 'text-white placeholder-white/70' : ''
+                }`}
               />
-              <button className="ml-2 text-gray-400 hover:text-gray-600">
+              <button className={`ml-2 ${showTransparent ? 'text-white/70 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>
                 <Search size={20} />
               </button>
             </div>
           </div>
 
           <div className="flex items-center gap-7">
-            <Link href="/orders" className="flex flex-col items-center text-gray-600 hover:text-black">
-              <Truck size={22} />
+            <Link href="/orders" className={`flex flex-col items-center ${showTransparent ? 'text-white/80 hover:text-white' : 'text-gray-600 hover:text-black'}`}>
+              <img src={ICON_SHIPPING} alt="shipping" width={22} height={22} className={showTransparent ? 'brightness-0 invert' : ''} />
               <span className="text-[10px] mt-1">{mounted ? t.header.orderTracking : "주문조회"}</span>
             </Link>
-            <Link href="/mypage" className="flex flex-col items-center text-gray-600 hover:text-black">
-              <User size={22} />
+            <Link href="/mypage" className={`flex flex-col items-center ${showTransparent ? 'text-white/80 hover:text-white' : 'text-gray-600 hover:text-black'}`}>
+              <img src={ICON_USER} alt="user" width={22} height={22} className={showTransparent ? 'brightness-0 invert' : ''} />
               <span className="text-[10px] mt-1">{mounted ? t.header.mypage : "마이페이지"}</span>
             </Link>
-            <Link href="/cart" className="flex flex-col items-center text-gray-600 hover:text-black relative">
-              <ShoppingCart size={22} />
+            <Link href="/cart" className={`flex flex-col items-center relative ${showTransparent ? 'text-white/80 hover:text-white' : 'text-gray-600 hover:text-black'}`}>
+              <img src={ICON_CART} alt="cart" width={22} height={22} className={showTransparent ? 'brightness-0 invert' : ''} />
               <span className="text-[10px] mt-1">{mounted ? t.header.cart : "장바구니"}</span>
-              {itemCount > 0 && (
+              {mounted && cartHydrated && itemCount > 0 && (
                 <span className="absolute -top-1 -right-2 w-5 h-5 bg-primary text-white text-[10px] rounded-full flex items-center justify-center">
                   {itemCount > 99 ? "99+" : itemCount}
                 </span>
@@ -255,8 +318,10 @@ export default function Header() {
               setActiveCategory(null);
             }}
           >
-            <button className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
-              <Grid3X3 size={20} />
+            <button className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+              showTransparent ? 'text-white/90 hover:text-white' : 'hover:text-primary'
+            }`}>
+              <img src={ICON_CATEGORY} alt="category" width={20} height={20} className={showTransparent ? '' : 'invert opacity-70'} />
               {mounted ? t.header.categories : "Danh mục"}
               <ChevronDown size={16} className={`transition-transform ${isCategoryMenuOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -398,7 +463,9 @@ export default function Header() {
                 key={link.id}
                 href={link.href}
                 target={link.isExternal ? "_blank" : undefined}
-                className="p-1.5 py-3.5 text-base font-medium text-gray-500 hover:text-black transition-colors"
+                className={`p-1.5 py-3.5 text-base font-medium transition-colors ${
+                  showTransparent ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-black'
+                }`}
               >
                 {link.highlight ? (
                   <span className="relative whitespace-nowrap flex">
@@ -427,19 +494,23 @@ export default function Header() {
       {/* Mobile Header */}
       <div className="pc:hidden">
         <div className="flex items-center justify-between h-14 px-5">
-          <button onClick={() => setIsMobileMenuOpen(true)}>
+          <button onClick={() => setIsMobileMenuOpen(true)} className={showTransparent ? 'text-white' : ''}>
             <Menu size={24} />
           </button>
-          <Link href="/" className="text-lg font-bold">
-            Gamigear
+          <Link href="/" className={`text-lg font-bold ${showTransparent ? 'text-white' : ''}`}>
+            {currentLogo ? (
+              <img src={currentLogo} alt={siteName} className="h-8 object-contain" />
+            ) : (
+              siteName
+            )}
           </Link>
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsSearchOpen(!isSearchOpen)}>
+            <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={showTransparent ? 'text-white' : ''}>
               <Search size={22} />
             </button>
             <Link href="/cart" className="relative">
-              <ShoppingCart size={22} />
-              {itemCount > 0 && (
+              <img src={ICON_CART} alt="cart" width={22} height={22} className={showTransparent ? 'brightness-0 invert' : ''} />
+              {mounted && cartHydrated && itemCount > 0 && (
                 <span className="absolute -top-1 -right-2 w-4 h-4 bg-primary text-white text-[10px] rounded-full flex items-center justify-center">
                   {itemCount > 99 ? "99+" : itemCount}
                 </span>
@@ -450,25 +521,33 @@ export default function Header() {
 
         {isSearchOpen && (
           <div className="px-5 pb-3">
-            <div className="flex items-center h-10 bg-gray-100 rounded-full px-4">
+            <div className={`flex items-center h-10 rounded-full px-4 ${
+              showTransparent ? 'bg-white/20 backdrop-blur-sm' : 'bg-gray-100'
+            }`}>
               <input
                 type="text"
                 placeholder={mounted ? t.header.searchPlaceholder : "검색어를 입력하세요"}
-                className="flex-1 bg-transparent outline-none text-sm"
+                className={`flex-1 bg-transparent outline-none text-sm ${
+                  showTransparent ? 'text-white placeholder-white/70' : ''
+                }`}
                 autoFocus
               />
-              <Search size={18} className="text-gray-400" />
+              <Search size={18} className={showTransparent ? 'text-white/70' : 'text-gray-400'} />
             </div>
           </div>
         )}
 
-        <nav className="gnb flex w-full h-full justify-evenly border-t border-gray-100 overflow-x-auto">
+        <nav className={`gnb flex w-full h-full justify-evenly overflow-x-auto ${
+          showTransparent ? 'border-t border-white/20' : 'border-t border-gray-100'
+        }`}>
           {mainNavLinks.map((link) => (
             <Link
               key={link.id}
               href={link.href}
               target={link.isExternal ? "_blank" : undefined}
-              className="flex-shrink-0 p-1.5 py-3.5 text-sm font-medium text-gray-500 flex items-center justify-center"
+              className={`flex-shrink-0 p-1.5 py-3.5 text-sm font-medium flex items-center justify-center ${
+                showTransparent ? 'text-white/80' : 'text-gray-500'
+              }`}
             >
               {link.highlight ? (
                 <span className="relative whitespace-nowrap flex">
@@ -512,7 +591,7 @@ export default function Header() {
                       {user.avatarUrl ? (
                         <img src={user.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
                       ) : (
-                        <User size={24} className="text-gray-500" />
+                        <img src={ICON_USER} alt="user" width={24} height={24} className="opacity-50" />
                       )}
                     </div>
                     <div>

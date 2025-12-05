@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { verifyAdminAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/api-auth';
 
 // GET /api/landing-pages
 export async function GET(request: NextRequest) {
@@ -27,8 +28,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/landing-pages
+// POST /api/landing-pages (Admin only)
 export async function POST(request: NextRequest) {
+  const authResult = await verifyAdminAuth(request);
+  if (!authResult.success) {
+    return authResult.error === "Admin access required" 
+      ? forbiddenResponse(authResult.error)
+      : unauthorizedResponse(authResult.error);
+  }
+
   try {
     const body = await request.json();
     const { title, slug, ...rest } = body;
