@@ -25,6 +25,11 @@ export const shopTranslations = {
       customerService: "Customer Service",
       menu: "Menu",
       categories: "Categories",
+      productCategories: "Product Categories",
+      viewAllCategories: "View All Categories",
+      viewAll: "View All →",
+      featuredCategories: "Featured Categories",
+      products: "products",
     },
     // Auth
     auth: {
@@ -292,6 +297,11 @@ export const shopTranslations = {
       customerService: "고객센터",
       menu: "메뉴",
       categories: "카테고리",
+      productCategories: "상품 카테고리",
+      viewAllCategories: "전체 카테고리 보기",
+      viewAll: "전체 보기 →",
+      featuredCategories: "인기 카테고리",
+      products: "상품",
     },
     // Auth
     auth: {
@@ -556,6 +566,11 @@ export const shopTranslations = {
       customerService: "Hỗ trợ khách hàng",
       menu: "Menu",
       categories: "Danh mục",
+      productCategories: "Danh mục sản phẩm",
+      viewAllCategories: "Xem tất cả danh mục",
+      viewAll: "Xem tất cả →",
+      featuredCategories: "Danh mục nổi bật",
+      products: "sản phẩm",
     },
     // Auth
     auth: {

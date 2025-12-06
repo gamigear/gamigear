@@ -335,7 +335,7 @@ export default function Header({ transparent = false }: HeaderProps) {
                     {/* Category List */}
                     <div className="w-[240px] bg-gray-50 border-r border-gray-100 py-2">
                       <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">
-                        Danh mục sản phẩm
+                        {mounted ? t.header.productCategories : "Danh mục sản phẩm"}
                       </div>
                       {categories.slice(0, 10).map((category) => (
                         <Link
@@ -358,7 +358,7 @@ export default function Header({ transparent = false }: HeaderProps) {
                         href="/categories"
                         className="flex items-center gap-2 px-4 py-3 text-sm text-primary font-medium border-t border-gray-100 mt-2"
                       >
-                        Xem tất cả danh mục
+                        {mounted ? t.header.viewAllCategories : "Xem tất cả danh mục"}
                         <ChevronRight size={16} />
                       </Link>
                     </div>
@@ -379,7 +379,7 @@ export default function Header({ transparent = false }: HeaderProps) {
                                     href={`/category/${cat.slug}`}
                                     className="text-sm text-primary hover:underline"
                                   >
-                                    Xem tất cả →
+                                    {mounted ? t.header.viewAll : "Xem tất cả →"}
                                   </Link>
                                 </div>
                                 {cat.description && (
@@ -417,7 +417,7 @@ export default function Header({ transparent = false }: HeaderProps) {
                       ) : (
                         /* Default content - Featured categories 4x2 grid */
                         <div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-4">Danh mục nổi bật</h3>
+                          <h3 className="text-lg font-bold text-gray-900 mb-4">{mounted ? t.header.featuredCategories : "Danh mục nổi bật"}</h3>
                           <div className="grid grid-cols-4 gap-4">
                             {categories.slice(0, 8).map((category) => (
                               <Link
@@ -442,7 +442,7 @@ export default function Header({ transparent = false }: HeaderProps) {
                                   {category.name}
                                 </h4>
                                 {category._count?.products !== undefined && (
-                                  <p className="text-xs text-gray-400 mt-1">{category._count.products} sản phẩm</p>
+                                  <p className="text-xs text-gray-400 mt-1">{category._count.products} {mounted ? t.header.products : "sản phẩm"}</p>
                                 )}
                               </Link>
                             ))}
@@ -637,7 +637,7 @@ export default function Header({ transparent = false }: HeaderProps) {
               
               {/* Categories in Mobile */}
               <div className="mb-4">
-                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Danh mục</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">{mounted ? t.header.categories : "Danh mục"}</p>
                 <div className="space-y-1">
                   {categories.slice(0, 6).map((category) => (
                     <Link
@@ -655,7 +655,7 @@ export default function Header({ transparent = false }: HeaderProps) {
                     className="block py-2 text-sm text-primary font-medium"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Xem tất cả →
+                    {mounted ? t.header.viewAll : "Xem tất cả →"}
                   </Link>
                 </div>
               </div>
