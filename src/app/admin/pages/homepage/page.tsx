@@ -223,15 +223,37 @@ export default function HomepageEditorPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch("/api/homepage", {
+      const payload = { settings: { ...settings, sections } };
+      console.log("Saving homepage settings:", Object.keys(payload.settings));
+      
+      const response = await fetch("/api/homepage", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ settings: { ...settings, sections } }),
+        credentials: "include", // Ensure cookies are sent
+        body: JSON.stringify(payload),
       });
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error("Failed to parse response:", parseError);
+        alert(hp.saveFailed + ": Invalid response from server");
+        return;
+      }
+      
+      if (!response.ok) {
+        console.error("API Error:", response.status, data);
+        alert(hp.saveFailed + (data.error ? `: ${data.error}` : ` (Status: ${response.status})`));
+        return;
+      }
+      
+      console.log("Save successful:", data);
       alert(hp.saved);
     } catch (error) {
       console.error("Save error:", error);
-      alert(hp.saveFailed);
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      alert(hp.saveFailed + `: ${errorMsg}`);
     } finally {
       setSaving(false);
     }

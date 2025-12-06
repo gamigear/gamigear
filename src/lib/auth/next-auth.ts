@@ -7,13 +7,77 @@ import NaverProvider from "next-auth/providers/naver";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db/prisma";
 import { verifyPassword } from "@/lib/auth";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    // Google OAuth
+    // Google OAuth (redirect flow)
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
+    
+    // Google One Tap (credential flow)
+    CredentialsProvider({
+      id: "google-one-tap",
+      name: "Google One Tap",
+      credentials: {
+        credential: { type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.credential) {
+          return null;
+        }
+
+        try {
+          // Verify Google ID token
+          const ticket = await googleClient.verifyIdToken({
+            idToken: credentials.credential,
+            audience: process.env.GOOGLE_CLIENT_ID,
+          });
+
+          const payload = ticket.getPayload();
+          if (!payload || !payload.email) {
+            return null;
+          }
+
+          // Check or create customer
+          let customer = await prisma.customer.findUnique({
+            where: { email: payload.email },
+          });
+
+          if (!customer) {
+            // Create new customer from Google One Tap
+            customer = await prisma.customer.create({
+              data: {
+                email: payload.email,
+                firstName: payload.given_name || "",
+                lastName: payload.family_name || "",
+                username: payload.email.split("@")[0] + "_" + Date.now(),
+                avatarUrl: payload.picture,
+              },
+            });
+          } else if (!customer.avatarUrl && payload.picture) {
+            // Update avatar if not set
+            await prisma.customer.update({
+              where: { id: customer.id },
+              data: { avatarUrl: payload.picture },
+            });
+          }
+
+          return {
+            id: customer.id,
+            email: customer.email,
+            name: `${customer.lastName}${customer.firstName}`,
+            image: customer.avatarUrl,
+          };
+        } catch (error) {
+          console.error("Google One Tap verification error:", error);
+          return null;
+        }
+      },
     }),
     
     // Facebook OAuth
