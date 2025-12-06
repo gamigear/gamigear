@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
       revalidateTag("products");
       revalidateTag("related-products");
       revalidateTag("categories");
+      revalidateTag("homepage-data");
       return NextResponse.json({ 
         success: true, 
         message: "All caches revalidated" 
@@ -59,6 +60,7 @@ export async function GET() {
     revalidateTag("products");
     revalidateTag("related-products");
     revalidateTag("categories");
+    revalidateTag("homepage-data");
     
     return NextResponse.json({ 
       success: true, 
