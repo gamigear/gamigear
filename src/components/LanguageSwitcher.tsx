@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Globe, ChevronDown } from "lucide-react";
-import { useShopTranslation } from "@/lib/i18n/useShopTranslation";
+import { useState, useEffect, useCallback } from "react";
+import { Globe } from "lucide-react";
 import type { ShopLocale } from "@/lib/i18n/shop-translations";
 
 const languages: { code: ShopLocale; name: string; flag: string }[] = [
@@ -11,19 +10,50 @@ const languages: { code: ShopLocale; name: string; flag: string }[] = [
   { code: "vi", name: "Tiếng Việt", flag: "🇻🇳" },
 ];
 
+const DEFAULT_LOCALE: ShopLocale = "vi";
+const STORAGE_KEY = "shop-locale";
+
+function getClientLocale(): ShopLocale {
+  if (typeof window === "undefined") return DEFAULT_LOCALE;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored && (stored === "en" || stored === "ko" || stored === "vi")) {
+    return stored;
+  }
+  return DEFAULT_LOCALE;
+}
+
 export default function LanguageSwitcher() {
-  const { locale, setLocale } = useShopTranslation();
+  const [locale, setLocaleState] = useState<ShopLocale>(DEFAULT_LOCALE);
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const clientLocale = getClientLocale();
+    setLocaleState(clientLocale);
+    setIsHydrated(true);
+
+    // Listen for locale changes from other components
+    const handleLocaleChange = (e: CustomEvent<ShopLocale>) => {
+      setLocaleState(e.detail);
+    };
+
+    window.addEventListener("shopLocaleChange", handleLocaleChange as EventListener);
+    return () => window.removeEventListener("shopLocaleChange", handleLocaleChange as EventListener);
   }, []);
 
-  // Default to Korean for SSR to avoid hydration mismatch
-  const currentLang = mounted 
-    ? (languages.find((l) => l.code === locale) || languages[0])
-    : languages[0];
+  const setLocale = useCallback((newLocale: ShopLocale) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, newLocale);
+      setLocaleState(newLocale);
+      // Dispatch event for other components to sync
+      window.dispatchEvent(new CustomEvent("shopLocaleChange", { detail: newLocale }));
+    }
+  }, []);
+
+  // Default to Vietnamese for SSR to avoid hydration mismatch
+  const currentLang = isHydrated 
+    ? (languages.find((l) => l.code === locale) || languages[2])
+    : languages[2];
 
   return (
     <div className="relative">

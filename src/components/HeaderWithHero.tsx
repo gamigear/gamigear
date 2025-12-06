@@ -55,15 +55,25 @@ const defaultMenus = {
   ],
 };
 
-export default function HeaderWithHero() {
+interface HeaderWithHeroProps {
+  initialBanners?: Banner[];
+  initialCategories?: BannerCategory[];
+}
+
+export default function HeaderWithHero({ 
+  initialBanners = [], 
+  initialCategories = [] 
+}: HeaderWithHeroProps) {
   const { user, isAuthenticated, logout, loading } = useAuth();
   const { itemCount, isHydrated: cartHydrated } = useCart();
   const { t } = useShopTranslation();
   const [mounted, setMounted] = useState(false);
-  const [banners, setBanners] = useState<Banner[]>([]);
-  const [categories, setCategories] = useState<BannerCategory[]>([]);
+  // Use initial data from server, no loading state needed if data exists
+  const [banners, setBanners] = useState<Banner[]>(initialBanners);
+  const [categories, setCategories] = useState<BannerCategory[]>(initialCategories);
   const [menus, setMenus] = useState(defaultMenus);
-  const [isLoading, setIsLoading] = useState(true);
+  // Only show loading if no initial data provided
+  const [isLoading, setIsLoading] = useState(initialBanners.length === 0);
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -81,9 +91,38 @@ export default function HeaderWithHero() {
 
   useEffect(() => {
     setMounted(true);
-    fetchData();
+    // Only fetch if no initial data provided (fallback for non-homepage usage)
+    if (initialBanners.length === 0) {
+      fetchData();
+    } else {
+      // Still fetch menus and settings, but don't block banner rendering
+      fetchMenusAndSettings();
+    }
   }, []);
 
+  // Lightweight fetch for menus and settings only (non-blocking)
+  const fetchMenusAndSettings = async () => {
+    try {
+      const [menusRes, settingsRes] = await Promise.all([
+        fetch("/api/menus"),
+        fetch("/api/settings"),
+      ]);
+      
+      const [menusData, settingsData] = await Promise.all([
+        menusRes.json(),
+        settingsRes.json(),
+      ]);
+      
+      if (settingsData.settings?.logoTransparent) {
+        setLogoUrl(settingsData.settings.logoTransparent);
+      }
+      if (menusData.data) setMenus(menusData.data);
+    } catch (error) {
+      console.error("Failed to fetch menus/settings:", error);
+    }
+  };
+
+  // Full fetch for fallback (when no initial data)
   const fetchData = async () => {
     try {
       setIsLoading(true);
@@ -94,7 +133,6 @@ export default function HeaderWithHero() {
         fetch("/api/settings"),
       ]);
       
-      // Load logo from settings
       const settingsData = await settingsRes.json();
       if (settingsData.settings?.logoTransparent) {
         setLogoUrl(settingsData.settings.logoTransparent);
@@ -253,6 +291,7 @@ export default function HeaderWithHero() {
             <div className="loading-spinner" />
           </div>
         ) : filteredBanners.length > 0 ? (
+          <>
           <Swiper
             key={activeFilter} // Force re-render when filter changes
             modules={[Navigation, Pagination, Autoplay, EffectFade]}
@@ -264,17 +303,20 @@ export default function HeaderWithHero() {
               clickable: true,
               dynamicBullets: false,
             }}
-            navigation={filteredBanners.length > 1}
+            navigation={{
+              prevEl: ".hero-nav-prev",
+              nextEl: ".hero-nav-next",
+            }}
             onSwiper={(swiper) => {
               swiperRef.current = swiper;
             }}
             className="hero-swiper"
           >
-            {filteredBanners.map((banner) => (
+            {filteredBanners.map((banner, index) => (
               <SwiperSlide
                 key={banner.id}
                 style={{
-                  background: `linear-gradient(100deg, ${banner.gradientFrom} 0%, ${banner.gradientTo} 100%)`,
+                  background: `linear-gradient(100deg, ${banner.gradientFrom || "#052566"} 0%, ${banner.gradientTo || "#3764be"} 100%)`,
                 }}
               >
                 <Link href={banner.link} className="slide-link">
@@ -301,7 +343,8 @@ export default function HeaderWithHero() {
                         width={500}
                         height={400}
                         className="object-contain"
-                        priority
+                        priority={index === 0}
+                        loading={index === 0 ? "eager" : "lazy"}
                       />
                     </div>
                   </div>
@@ -315,7 +358,8 @@ export default function HeaderWithHero() {
                         width={400}
                         height={200}
                         className="object-contain"
-                        priority
+                        priority={index === 0}
+                        loading={index === 0 ? "eager" : "lazy"}
                       />
                     </div>
                     <div className="mobile-cont">
@@ -337,6 +381,19 @@ export default function HeaderWithHero() {
               </SwiperSlide>
             ))}
           </Swiper>
+          
+          {/* Custom Navigation Buttons */}
+          {filteredBanners.length > 1 && (
+            <>
+              <button className="hero-nav-prev" aria-label="Previous slide">
+                <img src="https://www.cedubook.com/images/main/top-swiper-prev.svg" alt="prev" />
+              </button>
+              <button className="hero-nav-next" aria-label="Next slide">
+                <img src="https://www.cedubook.com/images/main/top-swiper-next.svg" alt="next" />
+              </button>
+            </>
+          )}
+          </>
         ) : (
           <div className="hero-empty" style={{ background: "linear-gradient(100deg, #052566 0%, #3764be 100%)" }}>
             <p>Chưa có banner nào</p>
@@ -922,26 +979,48 @@ export default function HeaderWithHero() {
           font-weight: 500;
         }
 
-        /* Navigation Arrows - Swiper default, nằm trong layout 1280px */
+        /* Custom Navigation Arrows */
+        .hero-nav-prev,
+        .hero-nav-next {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          z-index: 20;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          transition: opacity 0.2s;
+          padding: 0;
+        }
+        .hero-nav-prev img,
+        .hero-nav-next img {
+          width: 70px;
+          height: 70px;
+        }
+        .hero-nav-prev:hover,
+        .hero-nav-next:hover {
+          opacity: 0.7;
+        }
+        .hero-nav-prev {
+          left: 50px;
+        }
+        .hero-nav-next {
+          right: 50px;
+        }
+        @media (min-width: 1025px) {
+          .hero-nav-prev,
+          .hero-nav-next {
+            display: flex;
+          }
+        }
+        
+        /* Hide default Swiper navigation */
         .hero-swiper .swiper-button-prev,
         .hero-swiper .swiper-button-next {
-          color: rgba(255,255,255,0.5);
-          width: 48px;
-          height: 48px;
-        }
-        .hero-swiper .swiper-button-prev:hover,
-        .hero-swiper .swiper-button-next:hover {
-          color: #fff;
-        }
-        .hero-swiper .swiper-button-prev {
-          left: max(20px, calc((100vw - 1280px) / 2 + 20px));
-        }
-        .hero-swiper .swiper-button-next {
-          right: max(20px, calc((100vw - 1280px) / 2 + 20px));
-        }
-        .hero-swiper .swiper-button-prev::after,
-        .hero-swiper .swiper-button-next::after {
-          font-size: 28px;
+          display: none !important;
         }
 
         /* Mobile Menu */

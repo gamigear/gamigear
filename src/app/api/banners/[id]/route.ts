@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import prisma from '@/lib/db/prisma';
 import { verifyAdminAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/api-auth';
 
@@ -89,6 +90,9 @@ export async function PUT(
       },
     });
 
+    // Invalidate homepage banner cache
+    revalidateTag('homepage-banners');
+
     return NextResponse.json(banner);
   } catch (error) {
     console.error('Update banner error:', error);
@@ -137,6 +141,9 @@ export async function DELETE(
         details: JSON.stringify({ title: existingBanner.title }),
       },
     });
+
+    // Invalidate homepage banner cache
+    revalidateTag('homepage-banners');
 
     return NextResponse.json({ success: true });
   } catch (error) {

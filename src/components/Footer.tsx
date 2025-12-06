@@ -40,6 +40,9 @@ const staticTexts = {
     about: "About Us",
     terms: "Terms of Service",
     privacy: "Privacy Policy",
+    shipping: "Shipping",
+    returns: "Returns",
+    payment: "Payment",
   },
   ko: {
     notice: "공지사항",
@@ -54,6 +57,9 @@ const staticTexts = {
     about: "회사소개",
     terms: "이용약관",
     privacy: "개인정보처리방침",
+    shipping: "배송정책",
+    returns: "반품정책",
+    payment: "결제방법",
   },
   vi: {
     notice: "Thông báo",
@@ -68,6 +74,9 @@ const staticTexts = {
     about: "Về chúng tôi",
     terms: "Điều khoản sử dụng",
     privacy: "Chính sách bảo mật",
+    shipping: "Vận chuyển",
+    returns: "Đổi trả",
+    payment: "Thanh toán",
   },
 };
 
@@ -183,6 +192,9 @@ export default function Footer() {
               <li><Link href="/about" className="hover:text-black">{t.about}</Link></li>
               <li><Link href="/terms" className="hover:text-black">{t.terms}</Link></li>
               <li><Link href="/privacy" className="hover:text-black font-bold">{t.privacy}</Link></li>
+              <li><Link href="/shipping-policy" className="hover:text-black">{t.shipping}</Link></li>
+              <li><Link href="/return-policy" className="hover:text-black">{t.returns}</Link></li>
+              <li><Link href="/payment-methods" className="hover:text-black">{t.payment}</Link></li>
             </ul>
 
             {/* Company Info */}

@@ -62,6 +62,18 @@ interface Product {
   image?: string;
 }
 
+interface BlogPost {
+  id: string;
+  title: string;
+  featuredImage?: string;
+}
+
+interface BlogCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 
 export default function HomepageEditorPage() {
   const { t, setLocale, locale } = useI18n();
@@ -85,6 +97,7 @@ export default function HomepageEditorPage() {
     { id: "books", type: "products", title: hp.sections.types.books, enabled: true, settings: { limit: 8, category: "books" } },
     { id: "tickets", type: "products", title: hp.sections.types.tickets, enabled: true, settings: { limit: 8, category: "tickets" } },
     { id: "coupon-banner", type: "coupon-banner", title: hp.sections.types.couponBanner, enabled: true, settings: {} },
+    { id: "blog", type: "blog", title: "Blog & Tin tức", enabled: true, settings: { limit: 8, source: "latest" } },
   ];
 
   const [loading, setLoading] = useState(true);
@@ -99,6 +112,10 @@ export default function HomepageEditorPage() {
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [productSearch, setProductSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [blogCategories, setBlogCategories] = useState<BlogCategory[]>([]);
+  const [blogSearch, setBlogSearch] = useState("");
+  const [blogSearchResults, setBlogSearchResults] = useState<BlogPost[]>([]);
   
   const [settings, setSettings] = useState({
     heroTitle: "Thiết bị gaming cho nhà vô địch",
@@ -131,20 +148,24 @@ export default function HomepageEditorPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [bannersRes, promotionsRes, homepageRes, categoriesRes, productsRes] = await Promise.all([
+      const [bannersRes, promotionsRes, homepageRes, categoriesRes, productsRes, blogPostsRes, blogCategoriesRes] = await Promise.all([
         fetch("/api/banners"),
         fetch("/api/promotions"),
         fetch("/api/homepage"),
         fetch("/api/categories"),
         fetch("/api/products?per_page=100"),
+        fetch("/api/posts?per_page=100&status=publish"),
+        fetch("/api/post-categories"),
       ]);
 
-      const [bannersData, promotionsData, homepageData, categoriesData, productsData] = await Promise.all([
+      const [bannersData, promotionsData, homepageData, categoriesData, productsData, blogPostsData, blogCategoriesData] = await Promise.all([
         bannersRes.json(),
         promotionsRes.json(),
         homepageRes.json(),
         categoriesRes.json(),
         productsRes.json(),
+        blogPostsRes.json(),
+        blogCategoriesRes.json(),
       ]);
 
       setBanners(bannersData.data || []);
@@ -155,6 +176,12 @@ export default function HomepageEditorPage() {
         name: p.name,
         image: p.images?.[0]?.src || "",
       })));
+      setBlogPosts((blogPostsData.data || []).map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        featuredImage: p.featuredImage || "",
+      })));
+      setBlogCategories(blogCategoriesData.data || []);
       
       if (homepageData.settings?.sections) {
         setSections(homepageData.settings.sections);
@@ -179,6 +206,18 @@ export default function HomepageEditorPage() {
       p.name.toLowerCase().includes(query.toLowerCase())
     ).slice(0, 10);
     setSearchResults(results);
+  };
+
+  const searchBlogPosts = (query: string) => {
+    setBlogSearch(query);
+    if (query.length < 2) {
+      setBlogSearchResults([]);
+      return;
+    }
+    const results = blogPosts.filter(p => 
+      p.title.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 10);
+    setBlogSearchResults(results);
   };
 
   const handleSave = async () => {
@@ -406,7 +445,7 @@ export default function HomepageEditorPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {(section.type === "products" || section.type === "reviews" || section.type === "trending") && (
+                    {(section.type === "products" || section.type === "reviews" || section.type === "trending" || section.type === "blog") && (
                       <button
                         onClick={() => setEditingSection(section)}
                         className="p-2 hover:bg-gray-100 rounded-lg"
@@ -997,6 +1036,140 @@ export default function HomepageEditorPage() {
                       <option value="sales">{hp.sections.sortSales}</option>
                     </select>
                   </div>
+                </>
+              )}
+
+              {/* Blog Section Settings */}
+              {editingSection.type === "blog" && (
+                <>
+                  {/* Source Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nguồn bài viết</label>
+                    <select
+                      value={editingSection.settings.source || "latest"}
+                      onChange={(e) => {
+                        const newSettings: Record<string, any> = { ...editingSection.settings, source: e.target.value };
+                        if (e.target.value !== "manual") {
+                          delete newSettings.postIds;
+                        }
+                        setEditingSection({ ...editingSection, settings: newSettings });
+                      }}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="latest">Bài viết mới nhất</option>
+                      <option value="category">Theo danh mục</option>
+                      <option value="manual">Chọn thủ công</option>
+                    </select>
+                  </div>
+
+                  {/* Blog Count */}
+                  {editingSection.settings.source !== "manual" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Số bài viết hiển thị</label>
+                      <input
+                        type="number"
+                        value={editingSection.settings.limit || 8}
+                        onChange={(e) => {
+                          const newSettings = { ...editingSection.settings, limit: parseInt(e.target.value) };
+                          setEditingSection({ ...editingSection, settings: newSettings });
+                        }}
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min={1}
+                        max={20}
+                      />
+                    </div>
+                  )}
+
+                  {/* Blog Category Selection */}
+                  {editingSection.settings.source === "category" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục bài viết</label>
+                      <select
+                        value={editingSection.settings.blogCategory || ""}
+                        onChange={(e) => {
+                          const newSettings = { ...editingSection.settings, blogCategory: e.target.value || undefined };
+                          setEditingSection({ ...editingSection, settings: newSettings });
+                        }}
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Tất cả danh mục</option>
+                        {blogCategories.map((cat) => (
+                          <option key={cat.id} value={cat.slug}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Manual Blog Selection */}
+                  {editingSection.settings.source === "manual" && (
+                    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                      <label className="block text-sm font-medium text-gray-700">Chọn bài viết</label>
+                      
+                      {/* Search Input */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={blogSearch}
+                          onChange={(e) => searchBlogPosts(e.target.value)}
+                          placeholder="Tìm kiếm bài viết..."
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {blogSearchResults.length > 0 && (
+                          <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg mt-1 shadow-lg z-10 max-h-48 overflow-y-auto">
+                            {blogSearchResults.map((post) => (
+                              <button
+                                key={post.id}
+                                onClick={() => {
+                                  const currentIds = editingSection.settings.postIds || [];
+                                  if (!currentIds.includes(post.id)) {
+                                    const newSettings = { ...editingSection.settings, postIds: [...currentIds, post.id] };
+                                    setEditingSection({ ...editingSection, settings: newSettings });
+                                  }
+                                  setBlogSearch("");
+                                  setBlogSearchResults([]);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-3"
+                              >
+                                {post.featuredImage && (
+                                  <img src={post.featuredImage} alt="" className="w-8 h-8 object-cover rounded" />
+                                )}
+                                <span className="truncate">{post.title}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Selected Posts */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-500">Bài viết đã chọn ({(editingSection.settings.postIds || []).length})</p>
+                        {(editingSection.settings.postIds || []).map((postId: string) => {
+                          const post = blogPosts.find(p => p.id === postId);
+                          if (!post) return null;
+                          return (
+                            <div key={postId} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                              {post.featuredImage && (
+                                <img src={post.featuredImage} alt="" className="w-10 h-10 object-cover rounded" />
+                              )}
+                              <span className="flex-1 text-sm truncate">{post.title}</span>
+                              <button
+                                onClick={() => {
+                                  const newIds = (editingSection.settings.postIds || []).filter((id: string) => id !== postId);
+                                  const newSettings = { ...editingSection.settings, postIds: newIds };
+                                  setEditingSection({ ...editingSection, settings: newSettings });
+                                }}
+                                className="p-1 text-red-500 hover:bg-red-50 rounded"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

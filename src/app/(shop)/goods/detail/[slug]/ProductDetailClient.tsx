@@ -24,6 +24,7 @@ import Price, { usePrice } from "@/components/Price";
 import RelatedProductsSlider from "@/components/RelatedProductsSlider";
 import Breadcrumb from "@/components/Breadcrumb";
 import ProductGallery from "@/components/ProductGallery";
+import ProductReviews from "@/components/ProductReviews";
 import { useCart } from "@/contexts/CartContext";
 import type { ProductData } from "@/lib/api";
 import { useShopTranslation } from "@/lib/i18n/useShopTranslation";
@@ -645,9 +646,11 @@ export default function ProductDetailClient({
             </div>
           )}
           {activeTab === "review" && (
-            <div className="text-center py-20 text-gray-400">
-              {t.noReview}
-            </div>
+            <ProductReviews 
+              productId={product.id} 
+              averageRating={product.rating || 0}
+              reviewCount={product.reviewCount || 0}
+            />
           )}
           {activeTab === "qna" && (
             <div className="text-center py-20 text-gray-400">

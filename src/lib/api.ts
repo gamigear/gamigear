@@ -82,16 +82,11 @@ export async function getBestProducts(limit: number = 12): Promise<ProductData[]
   return products.map((p: any, index: number) => transformProduct(p, index + 1));
 }
 
-// Get new products
+// Get new products (most recently added products)
 export async function getNewProducts(limit: number = 8): Promise<ProductData[]> {
   const products = await prisma.product.findMany({
     where: {
       status: 'publish',
-      tags: {
-        some: {
-          tag: { slug: 'new' },
-        },
-      },
     },
     include: {
       images: {
@@ -280,81 +275,40 @@ export async function getProductById(id: string) {
   };
 }
 
-// Get single product by Slug (with fallback to ID)
+// Get single product by Slug (with fallback to ID) - Optimized
 export async function getProductBySlug(slug: string) {
+  // Optimized query - removed reviews (lazy loaded via API)
+  const productInclude = {
+    images: {
+      orderBy: { position: 'asc' as const },
+    },
+    brand: true,
+    categories: {
+      include: { category: true },
+    },
+    tags: {
+      include: { tag: true },
+    },
+    attributes: {
+      orderBy: { position: 'asc' as const },
+    },
+    variations: {
+      where: { isActive: true },
+      orderBy: { position: 'asc' as const },
+    },
+  };
+
   // Try to find by slug first
   let product = await prisma.product.findUnique({
     where: { slug },
-    include: {
-      images: {
-        orderBy: { position: 'asc' },
-      },
-      brand: true,
-      categories: {
-        include: { category: true },
-      },
-      tags: {
-        include: { tag: true },
-      },
-      attributes: {
-        orderBy: { position: 'asc' },
-      },
-      variations: {
-        where: { isActive: true },
-        orderBy: { position: 'asc' },
-      },
-      reviews: {
-        where: { status: 'approved' },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        include: {
-          customer: {
-            select: {
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
-      },
-    },
+    include: productInclude,
   });
 
   // If not found by slug, try to find by ID (for backward compatibility)
   if (!product) {
     product = await prisma.product.findUnique({
       where: { id: slug },
-      include: {
-        images: {
-          orderBy: { position: 'asc' },
-        },
-        brand: true,
-        categories: {
-          include: { category: true },
-        },
-        tags: {
-          include: { tag: true },
-        },
-        attributes: {
-          orderBy: { position: 'asc' },
-        },
-        variations: {
-          where: { isActive: true },
-          orderBy: { position: 'asc' },
-        },
-        reviews: {
-          where: { status: 'approved' },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-          include: {
-            customer: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
-      },
+      include: productInclude,
     });
   }
 
@@ -381,7 +335,6 @@ export async function getProductBySlug(slug: string) {
       image: v.image,
       attributes: v.attributes ? JSON.parse(v.attributes) : [],
     })),
-    reviews: product.reviews,
     stockStatus: product.stockStatus,
     stockQuantity: product.stockQuantity,
     productType: product.productType,

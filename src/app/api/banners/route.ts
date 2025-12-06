@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import prisma from '@/lib/db/prisma';
 import { verifyAdminAuth, unauthorizedResponse, forbiddenResponse } from '@/lib/api-auth';
 
@@ -84,6 +85,9 @@ export async function POST(request: NextRequest) {
         details: JSON.stringify({ title }),
       },
     });
+
+    // Invalidate homepage banner cache
+    revalidateTag('homepage-banners');
 
     return NextResponse.json(banner, { status: 201 });
   } catch (error) {

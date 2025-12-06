@@ -84,24 +84,34 @@ export default function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
           
-          <div className="flex items-baseline gap-2">
-            {discountPercent > 0 && (
-              <span className="text-primary font-bold text-base">
-                {discountPercent}%
-              </span>
+          <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline gap-2">
+              {discountPercent > 0 && (
+                <span className="text-primary font-bold text-base">
+                  {discountPercent}%
+                </span>
+              )}
+              <Price amount={product.price} className="text-base font-bold" />
+            </div>
+            {hasValidOriginalPrice && (
+              <Price amount={originalPrice} className="text-sm text-gray-400 line-through" />
             )}
-            <Price amount={product.price} className="text-base font-bold" />
           </div>
-          
-          {hasValidOriginalPrice && (
-            <Price amount={originalPrice} className="text-sm text-gray-400 line-through" />
-          )}
 
           {/* Rating */}
           {product.rating !== undefined && product.rating > 0 && (
             <div className="flex items-center gap-1 pt-1">
-              <span className="text-yellow-400">★</span>
-              <span className="text-xs text-gray-500">{product.rating}</span>
+              <div className="flex">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    className={`text-sm ${star <= Math.round(product.rating!) ? "text-yellow-400" : "text-gray-200"}`}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+              <span className="text-xs text-gray-500">{product.rating.toFixed(1)}</span>
               {product.reviewCount !== undefined && product.reviewCount > 0 && (
                 <span className="text-xs text-gray-400">({product.reviewCount})</span>
               )}

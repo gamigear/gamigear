@@ -8,7 +8,6 @@ import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
 
 import "swiper/css";
-import "swiper/css/navigation";
 import "swiper/css/pagination";
 
 const defaultBanners = [
@@ -109,7 +108,33 @@ export default function HeroBanner() {
   }
 
   return (
-    <section className="w-full pc:mb-[120px] mo:mb-[40px]">
+    <section className="w-full pc:mb-[120px] mo:mb-[40px] relative">
+      {/* Navigation Buttons - Full Width */}
+      {validBanners.length > 1 && (
+        <>
+          <button
+            className="hero-swiper-prev hidden pc:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 items-center justify-center hover:opacity-70 transition-opacity"
+            aria-label="Previous"
+          >
+            <img
+              src="https://www.cedubook.com/images/main/top-swiper-prev.svg"
+              alt="prev"
+              className="w-[48px] h-[48px]"
+            />
+          </button>
+          <button
+            className="hero-swiper-next hidden pc:flex absolute right-0 top-1/2 -translate-y-1/2 z-20 items-center justify-center hover:opacity-70 transition-opacity"
+            aria-label="Next"
+          >
+            <img
+              src="https://www.cedubook.com/images/main/top-swiper-next.svg"
+              alt="next"
+              className="w-[48px] h-[48px]"
+            />
+          </button>
+        </>
+      )}
+
       <div className="swiper-type-full relative">
         <Swiper
           modules={[Autoplay, Navigation, Pagination]}
@@ -191,24 +216,6 @@ export default function HeroBanner() {
             </SwiperSlide>
           ))}
         </Swiper>
-
-        {/* Navigation Buttons */}
-        {validBanners.length > 1 && (
-          <>
-            <button 
-              className="hero-swiper-prev hidden pc:flex absolute left-[calc(50%-660px)] top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/90 rounded-full items-center justify-center hover:bg-white transition-colors shadow-lg"
-              aria-label="Previous"
-            >
-              <img src="https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/public/images/icons/common/ico_chevron_left_tight_64.svg" alt="prev" width={24} height={24} />
-            </button>
-            <button 
-              className="hero-swiper-next hidden pc:flex absolute right-[calc(50%-660px)] top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/90 rounded-full items-center justify-center hover:bg-white transition-colors shadow-lg"
-              aria-label="Next"
-            >
-              <img src="https://cdn.i-screammall.co.kr/files/x2bee-hi-store-cdn/public/images/icons/common/ico_chevron_right_tight_64.svg" alt="next" width={24} height={24} />
-            </button>
-          </>
-        )}
 
         {/* Pagination */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">

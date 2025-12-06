@@ -436,6 +436,7 @@ model Review {
   reviewerEmail String
   review        String
   rating        Int
+  images        String?  // JSON array of image URLs
   verified      Boolean  @default(false)
   status        String   @default("hold") // approved, hold, spam, trash
   createdAt     DateTime @default(now())

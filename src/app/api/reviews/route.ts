@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/db/prisma";
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,7 +50,10 @@ export async function GET(request: NextRequest) {
       rating: review.rating,
       review: review.review,
       reviewerName: review.reviewerName,
+      reviewerEmail: review.reviewerEmail,
+      images: review.images,
       verified: review.verified,
+      status: review.status,
       createdAt: review.createdAt.toISOString(),
     }));
 
@@ -76,13 +79,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { productId, reviewerName, reviewerEmail, review, rating } = body;
+    const { productId, reviewerName, reviewerEmail, review, rating, images, status, verified } = body;
 
     if (!productId || !reviewerName || !reviewerEmail || !review || !rating) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+
+    // Handle images - can be array or JSON string
+    let imagesStr: string | null = null;
+    if (images) {
+      imagesStr = Array.isArray(images) ? JSON.stringify(images) : images;
     }
 
     const newReview = await prisma.review.create({
@@ -92,9 +101,30 @@ export async function POST(request: NextRequest) {
         reviewerEmail,
         review,
         rating: parseInt(rating),
-        status: "hold", // Pending approval
+        images: imagesStr,
+        status: status || "hold", // Pending approval by default
+        verified: verified || false,
       },
     });
+
+    // Update product rating if approved
+    if (status === "approved") {
+      const approvedReviews = await prisma.review.findMany({
+        where: { productId, status: "approved" },
+        select: { rating: true },
+      });
+
+      if (approvedReviews.length > 0) {
+        const avgRating = approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length;
+        await prisma.product.update({
+          where: { id: productId },
+          data: {
+            averageRating: avgRating,
+            ratingCount: approvedReviews.length,
+          },
+        });
+      }
+    }
 
     return NextResponse.json({ review: newReview });
   } catch (error) {

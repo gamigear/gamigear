@@ -17,20 +17,29 @@ async function getRelatedProducts(productId: string) {
   try {
     const limit = 12;
 
+    // Optimized: Only fetch what we need
     const product = await db.product.findUnique({
       where: { id: productId },
-      include: {
-        categories: true,
-        tags: true,
+      select: {
+        relatedProductsLimit: true,
+        relatedProductsSource: true,
+        categories: { select: { categoryId: true } },
         relatedProducts: {
-          include: {
+          select: {
             relatedProduct: {
-              include: {
-                images: { take: 1, orderBy: { position: "asc" } },
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                price: true,
+                salePrice: true,
+                featured: true,
+                images: { take: 1, select: { src: true } },
               },
             },
           },
           orderBy: { position: "asc" },
+          take: limit,
         },
       },
     });
@@ -57,49 +66,39 @@ async function getRelatedProducts(productId: string) {
     if ((source === "auto" || source === "mixed") && relatedProducts.length < relatedLimit) {
       const remainingLimit = relatedLimit - relatedProducts.length;
       const excludeIds = [productId, ...relatedProducts.map((p: any) => p.id)];
-
       const categoryIds = product.categories.map((pc: any) => pc.categoryId);
-      const tagIds = product.tags.map((pt: any) => pt.tagId);
 
-      const whereConditions: any[] = [];
-
-      if (categoryIds.length > 0) {
-        whereConditions.push({
-          categories: { some: { categoryId: { in: categoryIds } } },
-        });
-      }
-
-      if (tagIds.length > 0) {
-        whereConditions.push({
-          tags: { some: { tagId: { in: tagIds } } },
-        });
-      }
-
+      // Simplified query - only by category (faster)
       const autoRelated = await db.product.findMany({
         where: {
           id: { notIn: excludeIds },
           status: "publish",
-          ...(whereConditions.length > 0 ? { OR: whereConditions } : {}),
+          ...(categoryIds.length > 0
+            ? { categories: { some: { categoryId: { in: categoryIds } } } }
+            : {}),
         },
-        include: {
-          images: { take: 1, orderBy: { position: "asc" } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          price: true,
+          salePrice: true,
+          featured: true,
+          images: { take: 1, select: { src: true } },
         },
-        orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+        orderBy: { featured: "desc" },
         take: remainingLimit,
       });
 
-      const autoProducts = autoRelated.map((p: any) => {
-        const hasSale = p.salePrice && p.salePrice > 0;
-        return {
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          price: hasSale ? p.salePrice : p.price,
-          originalPrice: hasSale ? p.price : null,
-          image: p.images?.[0]?.src || "",
-          featured: p.featured,
-        };
-      });
+      const autoProducts = autoRelated.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        price: p.salePrice || p.price,
+        originalPrice: p.salePrice ? p.price : null,
+        image: p.images?.[0]?.src || "",
+        featured: p.featured,
+      }));
 
       relatedProducts = [...relatedProducts, ...autoProducts];
     }
@@ -111,34 +110,38 @@ async function getRelatedProducts(productId: string) {
   }
 }
 
-// Cache product data
-const getCachedProduct = unstable_cache(
-  async (slug: string) => getProductBySlug(slug),
-  ['product'],
-  { revalidate: 60, tags: ['product'] }
-);
+// Cache product data with unique key per slug
+const getCachedProduct = (slug: string) =>
+  unstable_cache(
+    async () => getProductBySlug(slug),
+    [`product-${slug}`],
+    { revalidate: 60, tags: [`product-${slug}`] }
+  )();
 
-// Cache related products
-const getCachedRelatedProducts = unstable_cache(
-  async (productId: string) => getRelatedProducts(productId),
-  ['related-products'],
-  { revalidate: 120, tags: ['related-products'] }
-);
+// Cache related products with unique key per product
+const getCachedRelatedProducts = (productId: string) =>
+  unstable_cache(
+    async () => getRelatedProducts(productId),
+    [`related-${productId}`],
+    { revalidate: 300, tags: [`related-${productId}`] }
+  )();
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  
+
+  // Fetch product first (required for related products)
   const product = await getCachedProduct(slug);
-  
+
   if (!product) {
     notFound();
   }
 
+  // Fetch related products (can be done in parallel with page render)
   const relatedProducts = await getCachedRelatedProducts(product.id);
 
   return (
-    <ProductDetailClient 
-      product={product} 
+    <ProductDetailClient
+      product={product}
       relatedProducts={relatedProducts}
     />
   );

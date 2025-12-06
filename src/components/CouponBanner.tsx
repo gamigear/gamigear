@@ -5,9 +5,6 @@ import Link from "next/link";
 import { useShopTranslation } from "@/lib/i18n/useShopTranslation";
 
 interface CouponBannerSettings {
-  title: string;
-  subtitle: string;
-  buttonText: string;
   link: string;
   enabled: boolean;
 }
@@ -24,9 +21,6 @@ export default function CouponBanner() {
   const texts = defaultTexts[mounted ? locale : 'ko'];
   
   const [settings, setSettings] = useState<CouponBannerSettings>({
-    title: texts.title,
-    subtitle: texts.subtitle,
-    buttonText: texts.buttonText,
     link: "/coupons",
     enabled: true,
   });
@@ -46,9 +40,6 @@ export default function CouponBanner() {
       
       if (data.settings) {
         setSettings({
-          title: data.settings.couponBannerTitle || settings.title,
-          subtitle: data.settings.couponBannerSubtitle || settings.subtitle,
-          buttonText: data.settings.couponBannerButtonText || settings.buttonText,
           link: data.settings.couponBannerLink || settings.link,
           enabled: data.settings.couponBannerEnabled !== false,
         });
@@ -68,16 +59,16 @@ export default function CouponBanner() {
         <div className="relative h-[50px] pc:h-[160px] bg-gradient-to-r from-orange-500 to-pink-500 rounded-lg pc:rounded-2xl overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-between px-3 pc:px-12">
             <div className="text-white">
-              <p className="text-[10px] pc:text-sm opacity-80 leading-tight">{settings.subtitle}</p>
+              <p className="text-[10px] pc:text-sm opacity-80 leading-tight">{texts.subtitle}</p>
               <h3 className="text-xs pc:text-2xl font-bold mt-0 pc:mt-1 leading-tight">
-                {settings.title}
+                {texts.title}
               </h3>
             </div>
             <Link
               href={settings.link}
               className="px-3 pc:px-6 py-1 pc:py-2 bg-white text-orange-600 font-medium rounded-full text-[10px] pc:text-sm hover:bg-gray-100 transition-colors whitespace-nowrap"
             >
-              {settings.buttonText}
+              {texts.buttonText}
             </Link>
           </div>
         </div>
