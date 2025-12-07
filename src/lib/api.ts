@@ -275,8 +275,22 @@ export async function getProductById(id: string) {
   };
 }
 
+// Extended product data for detail page
+export interface ProductDetailData extends ProductData {
+  description: string | null;
+  shortDescription: string | null;
+  images: { src: string; alt: string; blurDataUrl: string | null }[];
+  attributes: any[];
+  variations: any[];
+  stockStatus: string;
+  stockQuantity: number | null;
+  productType: string;
+  affiliateUrl: string | null;
+  affiliateButtonText: string | null;
+}
+
 // Get single product by Slug (with fallback to ID) - Optimized
-export async function getProductBySlug(slug: string): Promise<ProductData & { images: { src: string; alt: string; blurDataUrl: string | null }[] } | null> {
+export async function getProductBySlug(slug: string): Promise<ProductDetailData | null> {
   // Optimized query - removed reviews (lazy loaded via API)
   const productInclude = {
     images: {
