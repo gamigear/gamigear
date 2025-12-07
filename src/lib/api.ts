@@ -276,7 +276,7 @@ export async function getProductById(id: string) {
 }
 
 // Get single product by Slug (with fallback to ID) - Optimized
-export async function getProductBySlug(slug: string) {
+export async function getProductBySlug(slug: string): Promise<ProductData & { images: { src: string; alt: string; blurDataUrl: string | null }[] } | null> {
   // Optimized query - removed reviews (lazy loaded via API)
   const productInclude = {
     images: {
@@ -318,9 +318,10 @@ export async function getProductBySlug(slug: string) {
     ...transformProduct(product),
     description: product.description,
     shortDescription: product.shortDescription,
-    images: product.images.map((img: { src: string; alt: string | null }) => ({
+    images: product.images.map((img: { src: string; alt: string | null; blurDataUrl?: string | null }) => ({
       src: img.src,
       alt: img.alt || '',
+      blurDataUrl: img.blurDataUrl || null,
     })),
     attributes: product.attributes,
     variations: product.variations.map((v: any) => ({

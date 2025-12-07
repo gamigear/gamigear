@@ -136,7 +136,7 @@ interface ProductDetailClientProps {
   product: ProductData & {
     description?: string | null;
     shortDescription?: string | null;
-    images?: { src: string; alt: string }[];
+    images?: { src: string; alt: string; blurDataUrl?: string | null }[];
     stockStatus?: string;
     stockQuantity?: number | null;
     // Affiliate fields
@@ -263,8 +263,11 @@ export default function ProductDetailClient({
     router.push("/cart");
   };
 
-  // Get images for gallery
-  const productImages = product.images?.map(img => img.src) || [product.image];
+  // Get images for gallery with blur placeholders
+  const productImages = product.images?.map(img => ({
+    src: img.src,
+    blurDataUrl: img.blurDataUrl || null,
+  })) || [{ src: product.image, blurDataUrl: null }];
 
   // Check if product is affiliate
   const isAffiliate = product.productType === 'affiliate' && product.affiliateUrl;
