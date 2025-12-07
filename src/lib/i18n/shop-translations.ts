@@ -29,7 +29,7 @@ export const shopTranslations = {
       viewAllCategories: "View All Categories",
       viewAll: "View All →",
       featuredCategories: "Featured Categories",
-      products: "products",
+      productCount: "products",
     },
     // Auth
     auth: {
@@ -301,7 +301,7 @@ export const shopTranslations = {
       viewAllCategories: "전체 카테고리 보기",
       viewAll: "전체 보기 →",
       featuredCategories: "인기 카테고리",
-      products: "상품",
+      productCount: "상품",
     },
     // Auth
     auth: {
@@ -570,7 +570,7 @@ export const shopTranslations = {
       viewAllCategories: "Xem tất cả danh mục",
       viewAll: "Xem tất cả →",
       featuredCategories: "Danh mục nổi bật",
-      products: "sản phẩm",
+      productCount: "sản phẩm",
     },
     // Auth
     auth: {
